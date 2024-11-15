@@ -555,10 +555,13 @@ function displayGameOverScreen() {
       // Clear the scene or hide current game elements
       scene.clear(); // You might still need to manually clear objects if `.clear()` isn't sufficient.
 
-      // Create a "Game Over" message
-      const gameOverText = new TextGeometry("Game Over", {
+      // Create a "Game Over" message 
+      let time = Math.floor(clock.getElapsedTime());
+      const gameOverMessage = "Game Over";
+      const survivedMessage = `You survived for ${time} seconds`;
+      const gameOverText = new TextGeometry(gameOverMessage, {
           font: font, 
-          size: 1,  
+          size: 2,  
           height: 0.1, 
           curveSegments: 12, 
           bevelEnabled: true,
@@ -568,13 +571,26 @@ function displayGameOverScreen() {
           bevelSegments: 3
       });
 
+      const survivedText = new TextGeometry(survivedMessage, {
+        font: font,
+        size: 0.8,
+        height: 0.1,
+        curveSegments: 12,
+        bevelEnabled: true,
+        bevelThickness: 0.02,
+        bevelSize: 0.02,
+        bevelOffset: 0,
+        bevelSegments: 3,
+      });
+
       const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
       const gameOverMesh = new THREE.Mesh(gameOverText, textMaterial);
-
+      const survivedMesh = new THREE.Mesh(survivedText, textMaterial);
       // Position the text at the center of the screen
-      gameOverMesh.position.set(-2, 1, 0); // Adjust the coordinates as needed
-
+      gameOverMesh.position.set(-7, 1, 0); // Adjust the coordinates to make sure that its in the middle
+      survivedMesh.position.set(-7, -2, 0); 
       scene.add(gameOverMesh);
+      scene.add(survivedMesh);
 
       cancelAnimationFrame(animation);
   });
