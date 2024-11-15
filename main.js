@@ -2,6 +2,8 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 
 // Scene, Camera, Renderer
 const scene = new THREE.Scene();
@@ -539,9 +541,44 @@ function takeDamage(){
     life.geometry.dispose();  // Dispose of laser geometry
     life.material.dispose();  // Dispose of laser material
     last_collision = clock.getElapsedTime();
+    if (!lives.length) {
+        displayGameOverScreen();
     }
+  }
 }
 
+function displayGameOverScreen() {
+  const loader = new FontLoader();
+
+  // Load the font
+  loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
+      // Clear the scene or hide current game elements
+      scene.clear(); // You might still need to manually clear objects if `.clear()` isn't sufficient.
+
+      // Create a "Game Over" message
+      const gameOverText = new TextGeometry("Game Over", {
+          font: font, 
+          size: 1,  
+          height: 0.1, 
+          curveSegments: 12, 
+          bevelEnabled: true,
+          bevelThickness: 0.02,
+          bevelSize: 0.02,
+          bevelOffset: 0,
+          bevelSegments: 3
+      });
+
+      const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const gameOverMesh = new THREE.Mesh(gameOverText, textMaterial);
+
+      // Position the text at the center of the screen
+      gameOverMesh.position.set(-2, 1, 0); // Adjust the coordinates as needed
+
+      scene.add(gameOverMesh);
+
+      cancelAnimationFrame(animation);
+  });
+}
 
   // Keyboard Controls for Player Movement
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
