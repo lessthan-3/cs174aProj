@@ -358,6 +358,10 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 's' || event.key === 'S') keys.S = true;
   if (event.key === 'a' || event.key === 'A') keys.A = true;
   if (event.key === 'd' || event.key === 'D') keys.D = true;
+  if (event.code === 'Space') {
+    event.preventDefault();
+    keys.Space = true;
+  }
 });
 
 window.addEventListener('keyup', (event) => {
@@ -365,6 +369,7 @@ window.addEventListener('keyup', (event) => {
   if (event.key === 's' || event.key === 'S') keys.S = false;
   if (event.key === 'a' || event.key === 'A') keys.A = false;
   if (event.key === 'd' || event.key === 'D') keys.D = false;
+  if (event.code === 'Space') keys.Space = false;
 });
 
 
@@ -411,24 +416,45 @@ function createLives(){
     
   }
 // Update player OBB position in the movePlayer function
+let isJumping = false;
+const gravity = -.01;
+
 function movePlayer() {
     if (keys.W) velocity.y = 0.1;
     if (keys.S) velocity.y = -0.1;
     if (keys.A) velocity.x = -0.1;
     if (keys.D) velocity.x = 0.1;
 
-    //console.log(velocity)
-    if(velocity.y > 0 || velocity.x > 0){
-      player.stop == false;
+    if (keys.Space && !isJumping) {
+      isJumping = true;
+      velocity.z = .3 // Initial upward velocity, tweak this with gravity const for smoother/faster animations
+      console.log("jump, position at");
+      console.log(player.group.position);
     }
-    else{
-      player.stop;
+
+    if (velocity.x !== 0 || velocity.y !== 0 || velocity.z !== 0) {
+      player.stop = false;
+    }
+    else {
+      player.stop = true;
     }
     player.group.position.add(velocity);
     player.updateDirection(velocity);
 
+
+    if (isJumping) {
+      velocity.z += gravity;
+      console.log(velocity);
+      // Check if the player lands back on the ground
+      if (player.group.position.z <= 0) {
+          player.group.position.z = 0;
+          isJumping = false;
+          velocity.z = 0;
+      }
+    }
+
     // Reset velocity for next frame
-    velocity.set(0, 0, 0);
+    velocity.set(0, 0, velocity.z);
 
     playerOBB.update(player.group.position, player.group.matrixWorld);
 }
@@ -591,13 +617,11 @@ function displayGameOverScreen() {
       survivedMesh.position.set(-7, -2, 0); 
       scene.add(gameOverMesh);
       scene.add(survivedMesh);
-
-      cancelAnimationFrame(animation);
   });
 }
 
   // Keyboard Controls for Player Movement
-const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false};
 document.addEventListener('keydown', (event) => keys[event.key] = true);
 document.addEventListener('keyup', (event) => keys[event.key] = false);
 
