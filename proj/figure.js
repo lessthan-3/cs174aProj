@@ -207,3 +207,158 @@ figure.init()
 center(figure.group)
 
 render()
+
+
+//
+class Figure {
+    constructor(params) {
+        this.params = {
+            x: 0,
+            y: 0,
+            z: 0,
+            ry: 0,
+            ...params
+        };
+        
+        // Create group and add to scene
+        this.group = new THREE.Group();
+        scene.add(this.group);
+        
+        // Set initial position and scale
+        this.group.position.set(this.params.x, this.params.y, this.params.z);
+        this.group.scale.set(5, 5, 5);
+        
+        // Material
+        this.headHue = random(0, 360);
+        this.bodyHue = random(0, 360);
+        this.headLightness = random(40, 65);
+        this.headMaterial = new THREE.MeshLambertMaterial({ color: `hsl(${this.headHue}, 30%, ${this.headLightness}%)` });
+        this.bodyMaterial = new THREE.MeshLambertMaterial({ color: `hsl(${this.bodyHue}, 85%, 50%)` });
+        
+        this.init(); // Initialize the player parts
+    }
+
+    init() {
+        this.createBody();
+        this.createHead();
+        this.createArms();
+        this.createLegs();
+    }
+
+    createBody() {
+        this.body = new THREE.Group();
+        const geometry = new THREE.BoxGeometry(1, 1.5, 1);
+        const bodyMain = new THREE.Mesh(geometry, this.bodyMaterial);
+        this.body.add(bodyMain);
+        this.group.add(this.body);
+    }
+
+    createHead() {
+        this.head = new THREE.Group();
+        const geometry = new THREE.BoxGeometry(1.4, 1.4, 1.4);
+        const headMain = new THREE.Mesh(geometry, this.headMaterial);
+        this.head.add(headMain);
+        this.group.add(this.head);
+        this.head.position.y = 1.65;
+        this.createEyes();
+    }
+
+    createEyes() {
+        const eyes = new THREE.Group();
+        const geometry = new THREE.SphereGeometry(0.15, 12, 8);
+        const material = new THREE.MeshLambertMaterial({ color: 0x44445c });
+
+        for(let i = 0; i < 2; i++) {
+            const eye = new THREE.Mesh(geometry, material);
+            const m = i % 2 === 0 ? 1 : -1;
+            eyes.add(eye);
+            eye.position.x = 0.36 * m;
+        }
+        
+        this.head.add(eyes);
+        eyes.position.set(0, -0.1, 0.7);
+    }
+
+    createArms() {
+        this.arms = [];
+        const height = 0.85;
+        
+        for(let i = 0; i < 2; i++) {
+            const armGroup = new THREE.Group();
+            const geometry = new THREE.BoxGeometry(0.25, height, 0.25);
+            const arm = new THREE.Mesh(geometry, this.headMaterial);
+            const m = i % 2 === 0 ? 1 : -1;
+            
+            armGroup.add(arm);
+            this.body.add(armGroup);
+            
+            arm.position.y = height * -0.5;
+            armGroup.position.set(m * 0.8, 0.6, 0);
+            armGroup.rotation.z = degreesToRadians(30 * m);
+            this.arms.push(armGroup);
+        }
+    }
+
+    createLegs() {
+        this.legs = [];
+        const geometry = new THREE.BoxGeometry(0.25, 0.4, 0.25);
+        
+        for(let i = 0; i < 2; i++) {
+            const leg = new THREE.Mesh(geometry, this.headMaterial);
+            const m = i % 2 === 0 ? 1 : -1;
+            const legGroup = new THREE.Group();
+            legGroup.add(leg);
+            leg.position.y = -0.2;
+            legGroup.position.set(m * 0.22, -1.15, 0);
+            this.body.add(legGroup);
+            this.legs.push(legGroup);
+        }
+    }
+
+    // Run animation - move arms and legs
+    animateRun(elapsedTime) {
+        const speed = 5; // Control speed of running animation
+        const angle = Math.sin(elapsedTime * speed) * 0.5;
+        
+        this.arms[0].rotation.x = angle;
+        this.arms[1].rotation.x = -angle;
+        this.legs[0].rotation.x = -angle;
+        this.legs[1].rotation.x = angle;
+    }
+
+    // Update direction to face movement
+    updateDirection(velocity) {
+        const angle = Math.atan2(velocity.y, velocity.x);
+        this.group.rotation.z = angle - Math.PI / 2; // Adjust to face movement direction
+    }
+}
+
+// Update and animate player in the main animation loop
+const player = new Figure({ x: 0, y: 0, z: 0 });
+let velocity = new THREE.Vector3(); // Movement velocity
+
+function movePlayer() {
+    if (keys.ArrowUp) velocity.y = 0.1;
+    if (keys.ArrowDown) velocity.y = -0.1;
+    if (keys.ArrowLeft) velocity.x = -0.1;
+    if (keys.ArrowRight) velocity.x = 0.1;
+
+    player.group.position.add(velocity);
+    player.updateDirection(velocity);
+
+    // Reset velocity for next frame
+    velocity.set(0, 0, 0);
+}
+
+// Animation loop
+function animate() {
+    requestAnimationFrame(animate);
+    const elapsedTime = clock.getElapsedTime();
+    movePlayer();
+    player.animateRun(elapsedTime);
+
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+animate();

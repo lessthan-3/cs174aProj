@@ -17,100 +17,134 @@ const controls = new OrbitControls(camera, renderer.domElement);
 const lightAmbient = new THREE.AmbientLight(0x9eaeff, 0.1)
 scene.add(lightAmbient)
 
+
+const degreesToRadians = (degrees) => {
+	return degrees * (Math.PI / 180)
+}
+
 // Player Character (Figure)
 class Figure {
-    constructor(params) {
-        this.params = {
-            x: 0,
-            y: 0,
-            z: 0,
-            ry: 0,
-            ...params
-        };
+  constructor(params) {
+      this.params = {
+          x: 0,
+          y: 0,
+          z: 0,
+          ry: 0,
+          ...params
+      };
+      
+      // Create group and add to scene
+      this.group = new THREE.Group();
+      scene.add(this.group);
+      
+      // Set initial position and scale
+      this.group.position.set(this.params.x, this.params.y, this.params.z);
+      this.group.scale.set(1, 1, 1);
+      this.group.rotation.set(0, Math.PI/2, 0);
+      
+      // Material
+      this.headHue = 110;
+      this.bodyHue = 50;
+      this.headLightness = 55;
+      this.headMaterial = new THREE.MeshLambertMaterial({ color: `hsl(${this.headHue}, 30%, ${this.headLightness}%)` });
+      this.bodyMaterial = new THREE.MeshLambertMaterial({ color: `hsl(${this.bodyHue}, 85%, 50%)` });
+      
+      this.init(); // Initialize the player parts
+  }
 
-        // Create group and add to scene
-        this.group = new THREE.Group();
-        scene.add(this.group);
+  init() {
+      this.createBody();
+      this.createHead();
+      this.createArms();
+      this.createLegs();
+  }
 
-        // Position according to params
-        this.group.position.set(this.params.x, this.params.y, this.params.z);
-        this.group.rotation.y = this.params.ry;
-        this.group.rotation.set(Math.PI / 2, 0 , 0); // Rotate by 90 degrees (π/2 radians) along the z-axis
-        this.group.scale.set(1, 1, 1);
+  createBody() {
+      this.body = new THREE.Group();
+      const geometry = new THREE.BoxGeometry(1, 1.5, 1);
+      const bodyMain = new THREE.Mesh(geometry, this.bodyMaterial);
+      this.body.add(bodyMain);
+      this.group.add(this.body);
+  }
 
-        // Material
-        this.headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFDD88 });
-        this.bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x88CCFF });
+  createHead() {
+      this.head = new THREE.Group();
+      const geometry = new THREE.BoxGeometry(1.4, 1.4, 1.4);
+      const headMain = new THREE.Mesh(geometry, this.headMaterial);
+      this.head.add(headMain);
+      this.group.add(this.head);
+      this.head.position.y = 1.65;
+      this.createEyes();
+  }
 
-        this.init();
-    }
+  createEyes() {
+      const eyes = new THREE.Group();
+      const geometry = new THREE.SphereGeometry(0.15, 12, 8);
+      const material = new THREE.MeshLambertMaterial({ color: 0x44445c });
 
-    createBody() {
-        this.body = new THREE.Group();
-        const geometry = new THREE.BoxGeometry(1, 1.5, 1);
-        const bodyMain = new THREE.Mesh(geometry, this.bodyMaterial);
-        this.body.add(bodyMain);
-        this.group.add(this.body);
-        this.createLegs();
-    }
+      for(let i = 0; i < 2; i++) {
+          const eye = new THREE.Mesh(geometry, material);
+          const m = i % 2 === 0 ? 1 : -1;
+          eyes.add(eye);
+          eye.position.x = 0.36 * m;
+      }
+      
+      this.head.add(eyes);
+      eyes.position.set(0, -0.1, 0.7);
+  }
 
-    createHead() {
-        this.head = new THREE.Group();
-        const geometry = new THREE.BoxGeometry(1.4, 1.4, 1.4);
-        const headMain = new THREE.Mesh(geometry, this.headMaterial);
-        this.head.add(headMain);
-        this.group.add(this.head);
-        this.head.position.y = 1.65;
-        this.createEyes();
-    }
+  createArms() {
+      this.arms = [];
+      const height = 0.85;
+      
+      for(let i = 0; i < 2; i++) {
+          const armGroup = new THREE.Group();
+          const geometry = new THREE.BoxGeometry(0.25, height, 0.25);
+          const arm = new THREE.Mesh(geometry, this.headMaterial);
+          const m = i % 2 === 0 ? 1 : -1;
+          
+          armGroup.add(arm);
+          this.body.add(armGroup);
+          
+          arm.position.y = height * -0.5;
+          armGroup.position.set(m * 0.8, 0.6, 0);
+          armGroup.rotation.z = degreesToRadians(30 * m);
+          this.arms.push(armGroup);
+      }
+  }
 
-    createArms() {
-        const height = 0.85;
-        for (let i = 0; i < 2; i++) {
-            const armGroup = new THREE.Group();
-            const geometry = new THREE.BoxGeometry(0.25, height, 0.25);
-            const arm = new THREE.Mesh(geometry, this.headMaterial);
-            const m = i % 2 === 0 ? 1 : -1;
-            armGroup.add(arm);
-            this.body.add(armGroup);
-            arm.position.y = height * -0.5;
-            armGroup.position.set(m * 0.8, 0.6, 0);
-            armGroup.rotation.z = Math.PI / 6 * m;
-        }
-    }
+  createLegs() {
+      this.legs = [];
+      const geometry = new THREE.BoxGeometry(0.25, 0.4, 0.25);
+      
+      for(let i = 0; i < 2; i++) {
+          const leg = new THREE.Mesh(geometry, this.headMaterial);
+          const m = i % 2 === 0 ? 1 : -1;
+          const legGroup = new THREE.Group();
+          legGroup.add(leg);
+          leg.position.y = -0.2;
+          legGroup.position.set(m * 0.22, -1.15, 0);
+          this.body.add(legGroup);
+          this.legs.push(legGroup);
+      }
+  }
 
-    createEyes() {
-        const eyes = new THREE.Group();
-        const geometry = new THREE.SphereGeometry(0.15, 12, 8);
-        const material = new THREE.MeshLambertMaterial({ color: 0x44445c });
-        for (let i = 0; i < 2; i++) {
-            const eye = new THREE.Mesh(geometry, material);
-            const m = i % 2 === 0 ? 1 : -1;
-            eyes.add(eye);
-            eye.position.x = 0.36 * m;
-        }
-        this.head.add(eyes);
-        eyes.position.set(0, -0.1, 0.7);
-    }
+  // Run animation - move arms and legs
+  animateRun(elapsedTime) {
+      const speed = 5; // Control speed of running animation
+      const angle = Math.sin(elapsedTime * speed) * 0.5;
+      
+      this.arms[0].rotation.x = angle;
+      this.arms[1].rotation.x = -angle;
+      this.legs[0].rotation.x = -angle;
+      this.legs[1].rotation.x = angle;
+  }
 
-    createLegs() {
-        const legs = new THREE.Group();
-        const geometry = new THREE.BoxGeometry(0.25, 0.4, 0.25);
-        for (let i = 0; i < 2; i++) {
-            const leg = new THREE.Mesh(geometry, this.headMaterial);
-            const m = i % 2 === 0 ? 1 : -1;
-            legs.add(leg);
-            leg.position.x = m * 0.22;
-        }
-        legs.position.y = -1.15;
-        this.body.add(legs);
-    }
-
-    init() {
-        this.createBody();
-        this.createHead();
-        this.createArms();
-    }
+  // Update direction to face movement
+  updateDirection(velocity) {
+      const angle = Math.atan2(velocity.y, velocity.x);
+      this.group.rotation.z = angle - Math.PI / 2; // Adjust to face movement direction
+  }
 }
 
 
@@ -180,6 +214,7 @@ class OBB {
 
 // Initialize the player figure
 const player = new Figure({ x: 0, y: 0, z: 0 });
+let velocity = new THREE.Vector3();
 const playerOBB = new OBB(player.group.position, new THREE.Vector3(0.5, 0.5, 0.5));
 
 // Update player OBB position in the movePlayer function
@@ -188,6 +223,11 @@ function movePlayer() {
     if (keys.ArrowDown) player.group.position.y -= 0.1;
     if (keys.ArrowLeft) player.group.position.x -= 0.1;
     if (keys.ArrowRight) player.group.position.x += 0.1;
+
+    player.group.position.add(velocity);
+    player.updateDirection(velocity);
+
+    velocity.set(0, 0, 0);
 
     playerOBB.update(player.group.position, player.group.matrixWorld);
 }
@@ -312,7 +352,7 @@ function animate() {
         laser.material.color.set(0xff0000);
     });
   }
-
+  player.animateRun(time);
 
   
 
