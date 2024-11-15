@@ -8,6 +8,8 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+//test comment
+
 // Camera Position
 camera.position.z = 10;
 
