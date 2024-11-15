@@ -6,6 +6,18 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 // Scene, Camera, Renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+// const aspectRatio = window.innerWidth / window.innerHeight;
+// const zoom = 10; // Adjust zoom factor to control visible area
+// const frustumSize = zoom;
+
+// const camera = new THREE.OrthographicCamera(
+//     frustumSize * aspectRatio / -2, // left
+//     frustumSize * aspectRatio / 2,  // right
+//     frustumSize / 2,                // top
+//     frustumSize / -2,               // bottom
+//     0.1,                            // near
+//     1000                            // far
+// );
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -13,12 +25,43 @@ document.body.appendChild(renderer.domElement);
 //test comment
 
 // Camera Position
-camera.position.z = 10;
-camera.position.x = -10;
+camera.position.set(0, -17, 6 );
 camera.lookAt(0,0,0);
 
 // Orbit Controls (for testing)
 const controls = new OrbitControls(camera, renderer.domElement);
+
+function initialize_event_listeners() {
+  const arrow_keys = [ 'ArrowUp', 'ArrowDown', 'ArrowRight', 'ArrowLeft' ];
+
+  window.addEventListener( 'pointerdown', ( event ) => {}, false);
+  window.addEventListener( 'pointerup', ( event ) => {}, false);
+  window.addEventListener( 'wheel', ( event ) => {}, false);
+  window.addEventListener( 'keydown', ( event ) => {
+    if (arrow_keys.some( k => k === event.key ) || event.ctrlKey || event.metaKey || event.shiftKey) {
+      controls.listenToKeyEvents( window );
+    }
+  }, false);
+  window.addEventListener( 'keyup', ( event ) => {
+    if (arrow_keys.some( k => k === event.key )) {
+      controls.stopListenToKeyEvents();
+    }
+  }, false);
+}
+
+initialize_event_listeners();
+
+controls.keys = {
+
+  LEFT: 'ArrowLeft', 
+
+  UP: 'ArrowUp', 
+
+  RIGHT: 'ArrowRight', 
+
+  BOTTOM: 'ArrowDown' 
+
+};
 
 const lightAmbient = new THREE.AmbientLight(0x9eaeff, 0.5)
 scene.add(lightAmbient)
@@ -50,11 +93,11 @@ class Figure {
       this.group.rotation.set(Math.PI /2, 0 ,0 );
       
       // Material
-      this.headHue = 110;
-      this.bodyHue = 50;
+      this.headHue = 10;
+      this.bodyHue = 30;
       this.headLightness = 55;
-      this.headMaterial = new THREE.MeshLambertMaterial({ color: `hsl(${this.headHue}, 30%, ${this.headLightness}%)` });
-      this.bodyMaterial = new THREE.MeshLambertMaterial({ color: `hsl(${this.bodyHue}, 85%, 50%)` });
+      this.headMaterial = new THREE.MeshPhongMaterial({ color: `hsl(${this.headHue}, 30%, ${this.headLightness}%)` });
+      this.bodyMaterial = new THREE.MeshPhongMaterial({ color: `hsl(${this.bodyHue}, 85%, 50%)` });
       
       this.init(); // Initialize the player parts
 
@@ -66,11 +109,12 @@ class Figure {
       this.createHead();
       this.createArms();
       this.createLegs();
+      //this.createLives();
   }
 
   createBody() {
       this.body = new THREE.Group();
-      const geometry = new THREE.BoxGeometry(1, 1.5, 1);
+      const geometry = new THREE.CylinderGeometry(.5,.5, 1.8, 10);
       const bodyMain = new THREE.Mesh(geometry, this.bodyMaterial);
       this.body.add(bodyMain);
       this.group.add(this.body);
@@ -86,10 +130,40 @@ class Figure {
       this.createEyes();
   }
 
+  // createLives(){
+  //   const lives = new THREE.Group();
+  //   const x = 0, y = 0;
+  //   const heartShape = new THREE.Shape();
+
+  //     heartShape.moveTo( x + 5, y + 5 );
+  //     heartShape.bezierCurveTo( x + 5, y + 5, x + 4, y, x, y );
+  //     heartShape.bezierCurveTo( x - 6, y, x - 6, y + 7,x - 6, y + 7 );
+  //     heartShape.bezierCurveTo( x - 6, y + 11, x - 3, y + 15.4, x + 5, y + 19 );
+  //     heartShape.bezierCurveTo( x + 12, y + 15.4, x + 16, y + 11, x + 16, y + 7 );
+  //     heartShape.bezierCurveTo( x + 16, y + 7, x + 16, y, x + 10, y );
+  //     heartShape.bezierCurveTo( x + 7, y, x + 5, y + 5, x + 5, y + 5 );
+
+  //     const geometry = new THREE.ShapeGeometry( heartShape );
+  //     const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+  //     for(let i = 0; i < 2; i++) {
+  //       const heart = new THREE.Mesh( geometry, material );
+  //       heart.rotation.set(0,0,Math.Pi/2);
+  //       heart.material.side = THREE.DoubleSide;
+  //       const m = i % 2 === 0 ? 1 : -1;
+  //       lives.add(heart);
+  //       heart.position.x = 0.5* m;
+  //       heart.scale.set(.5,.5,.5);
+        
+  //   }
+      
+  //     this.head.add(lives)
+  //     lives.position.set(0, 20, 0);
+  // }
+
   createEyes() {
       const eyes = new THREE.Group();
       const geometry = new THREE.SphereGeometry(0.15, 12, 8);
-      const material = new THREE.MeshLambertMaterial({ color: 0x44445c });
+      const material = new THREE.MeshPhongMaterial({ color: 0x44445c });
 
       for(let i = 0; i < 2; i++) {
           const eye = new THREE.Mesh(geometry, material);
@@ -104,7 +178,7 @@ class Figure {
 
   createArms() {
       this.arms = [];
-      const height = 0.85;
+      const height = 1.0;
       
       for(let i = 0; i < 2; i++) {
           const armGroup = new THREE.Group();
@@ -116,7 +190,7 @@ class Figure {
           this.body.add(armGroup);
           
           arm.position.y = height * -0.5;
-          armGroup.position.set(m * 0.8, 0.6, 0);
+          armGroup.position.set(m * 0.3, 0.6, 0);
           armGroup.rotation.z = degreesToRadians(30 * m);
           this.arms.push(armGroup);
       }
@@ -124,7 +198,7 @@ class Figure {
 
   createLegs() {
       this.legs = [];
-      const geometry = new THREE.BoxGeometry(0.25, 0.4, 0.25);
+      const geometry = new THREE.BoxGeometry(0.25, 0.8, 0.25);
       
       for(let i = 0; i < 2; i++) {
           const leg = new THREE.Mesh(geometry, this.headMaterial);
@@ -277,13 +351,69 @@ let velocity = new THREE.Vector3();
 const playerOBB = new OBB(player.group.position, new THREE.Vector3(0.5, 0.5, 0.5));
 
 
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'w' || event.key === 'W') keys.W = true;
+  if (event.key === 's' || event.key === 'S') keys.S = true;
+  if (event.key === 'a' || event.key === 'A') keys.A = true;
+  if (event.key === 'd' || event.key === 'D') keys.D = true;
+});
 
+window.addEventListener('keyup', (event) => {
+  if (event.key === 'w' || event.key === 'W') keys.W = false;
+  if (event.key === 's' || event.key === 'S') keys.S = false;
+  if (event.key === 'a' || event.key === 'A') keys.A = false;
+  if (event.key === 'd' || event.key === 'D') keys.D = false;
+});
+
+
+const lives = []
+const livesGroup = new THREE.Group();
+scene.add(livesGroup);
+
+// const geometry = new THREE.Shape;
+// const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+
+
+function createLives(){
+
+
+    
+    const x = 0, y = 0;
+    const heartShape = new THREE.Shape();
+
+      heartShape.moveTo( x + 5, y + 5 );
+      heartShape.bezierCurveTo( x + 5, y + 5, x + 4, y, x, y );
+      heartShape.bezierCurveTo( x - 6, y, x - 6, y + 7,x - 6, y + 7 );
+      heartShape.bezierCurveTo( x - 6, y + 11, x - 3, y + 15.4, x + 5, y + 19 );
+      heartShape.bezierCurveTo( x + 12, y + 15.4, x + 16, y + 11, x + 16, y + 7 );
+      heartShape.bezierCurveTo( x + 16, y + 7, x + 16, y, x + 10, y );
+      heartShape.bezierCurveTo( x + 7, y, x + 5, y + 5, x + 5, y + 5 );
+
+      const geometry = new THREE.ShapeGeometry( heartShape );
+      const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+      for(let i = 0; i < 3; i++) {
+        const heart = new THREE.Mesh( geometry, material );
+        heart.material.side = THREE.DoubleSide;
+
+        heart.rotateX(Math.PI/2);
+        heart.rotateZ(Math.PI);
+        heart.position.x = 5* i - 5;
+        heart.position.y= 80;
+        heart.position.z = 30;
+        heart.scale.set(.2,.2,.2);
+
+        lives.push(heart);
+        livesGroup.add(heart);
+        
+    }
+    
+  }
 // Update player OBB position in the movePlayer function
 function movePlayer() {
-    if (keys.ArrowUp) velocity.y = 0.1;
-    if (keys.ArrowDown) velocity.y = -0.1;
-    if (keys.ArrowLeft) velocity.x = -0.1;
-    if (keys.ArrowRight) velocity.x = 0.1;
+    if (keys.W) velocity.y = 0.1;
+    if (keys.S) velocity.y = -0.1;
+    if (keys.A) velocity.x = -0.1;
+    if (keys.D) velocity.x = 0.1;
 
     //console.log(velocity)
     if(velocity.y > 0 || velocity.x > 0){
@@ -301,7 +431,6 @@ function movePlayer() {
     playerOBB.update(player.group.position, player.group.matrixWorld);
 }
 
-// Remaining code for lasers, collisions, resize, and rendering...
 
 
 
@@ -315,11 +444,12 @@ window.addEventListener('resize', () => {
 
 
 
-
+let clock = new THREE.Clock();
 // Laser Group
 const lasers = [];
 const laserGroup = new THREE.Group();
 scene.add(laserGroup);
+let last_collision = clock.getElapsedTime();
 
 // Laser Creation Function
 function createLaser() {
@@ -335,7 +465,7 @@ function createLaser() {
   laser.dim = true; // Initial state
   laser.material.color.set(0x440000); // Dim color
 
-  const numLights = 15; // Number of lights along the laser
+  const numLights = 5; // Number of lights along the laser
   for (let i = 0; i < numLights; i++) {
       const lightPosition = (i - numLights / 2) * (laserGeometry.parameters.width / numLights);
       const laserLight = new THREE.PointLight(0xff0000, 0.5, 5); // Light color, intensity, range
@@ -362,7 +492,7 @@ function createLaser() {
     lasers.length = 0; // Clear the lasers array
   }
   
-  let clock = new THREE.Clock();
+ 
   let last_laser = clock.getElapsedTime();
   // Create New Lasers Every Few Seconds
   setInterval(() => {
@@ -371,6 +501,7 @@ function createLaser() {
         createLaser();
         last_laser = clock.getElapsedTime();
       }
+    console.log(camera.position)
   }, 3000);
 
   
@@ -386,11 +517,14 @@ function createLaser() {
       // Update Laser OBB
       const laserOBB = new OBB(laser.position, new THREE.Vector3(5, 0.05, 0.05));
       laserOBB.update(laser.position, laser.matrixWorld);
-  
+      
+      
       // Check Collision
-      if(laser.dim == false){
+      if(laser.dim == false && clock.getElapsedTime() - last_collision > 3){
         if (playerOBB.intersectsOBB(laserOBB)) {
             console.log("Collision detected!");
+            takeDamage();
+
             // Handle collision (e.g., restart game or reduce health)
           }
       }
@@ -398,6 +532,16 @@ function createLaser() {
     });
   }
   
+function takeDamage(){
+  if(lives.length){
+    let life = lives.pop();
+    livesGroup.remove(life); // Remove each laser from the laser group
+    life.geometry.dispose();  // Dispose of laser geometry
+    life.material.dispose();  // Dispose of laser material
+    last_collision = clock.getElapsedTime();
+    }
+}
+
 
   // Keyboard Controls for Player Movement
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
@@ -406,7 +550,8 @@ document.addEventListener('keyup', (event) => keys[event.key] = false);
 
 
 
-
+createLives();
+console.log(lives);
 
 // Animation Loop
 function animate() {
