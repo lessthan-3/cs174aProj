@@ -2,8 +2,12 @@ Laser Maze
 
 Build
 
-'npm init -y'
+```bash
+npm i
+```
 
-'npm install --save three'
+Run
 
-'npm install --save-dev vite'
+```bash
+npx vite
+```
