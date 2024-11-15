@@ -348,7 +348,7 @@ class OBB {
 // Initialize the player figure
 const player = new Figure({ x: 0, y: 0, z: 0 });
 let velocity = new THREE.Vector3();
-const playerOBB = new OBB(player.group.position, new THREE.Vector3(0.5, 0.5, 0.5));
+const playerOBB = new OBB(player.group.position, new THREE.Vector3(0.1, 0.1, 0.1));
 
 
 window.addEventListener('keydown', (event) => {
@@ -515,7 +515,7 @@ function createLaser() {
     //   }
   
       // Update Laser OBB
-      const laserOBB = new OBB(laser.position, new THREE.Vector3(5, 0.05, 0.05));
+      const laserOBB = new OBB(laser.position, new THREE.Vector3(100, 0.05, 0.05));
       laserOBB.update(laser.position, laser.matrixWorld);
       
       
@@ -549,6 +549,14 @@ document.addEventListener('keydown', (event) => keys[event.key] = true);
 document.addEventListener('keyup', (event) => keys[event.key] = false);
 
 
+// const playerOBBHelper = new THREE.BoxHelper(new THREE.Mesh(new THREE.BoxGeometry(1, 1.8, 1)), 0x00ff00);
+// scene.add(playerOBBHelper);
+
+// function updateOBBHelper() {
+//   playerOBBHelper.position.copy(playerOBB.position);
+//   playerOBBHelper.rotation.setFromRotationMatrix(playerOBB.rotationMatrix);
+// }
+
 
 createLives();
 console.log(lives);
@@ -567,12 +575,14 @@ function animate() {
     });
   }
   player.animateRun(time);
-
+  //updateOBBHelper();
   
-
+  playerOBB.update(player.group.position, player.group.matrixWorld);
   controls.update(); 
   renderer.render(scene, camera);
 }
+
+
 
 animate();
 
