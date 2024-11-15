@@ -1,3 +1,5 @@
+
+
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
@@ -12,17 +14,20 @@ document.body.appendChild(renderer.domElement);
 
 // Camera Position
 camera.position.z = 10;
+camera.position.x = -10;
+camera.lookAt(0,0,0);
 
 // Orbit Controls (for testing)
 const controls = new OrbitControls(camera, renderer.domElement);
 
-const lightAmbient = new THREE.AmbientLight(0x9eaeff, 0.1)
+const lightAmbient = new THREE.AmbientLight(0x9eaeff, 0.5)
 scene.add(lightAmbient)
 
 
 const degreesToRadians = (degrees) => {
 	return degrees * (Math.PI / 180)
 }
+
 
 // Player Character (Figure)
 class Figure {
@@ -42,7 +47,7 @@ class Figure {
       // Set initial position and scale
       this.group.position.set(this.params.x, this.params.y, this.params.z);
       this.group.scale.set(1, 1, 1);
-      this.group.rotation.set(0, Math.PI/2, 0);
+      this.group.rotation.set(Math.PI /2, 0 ,0 );
       
       // Material
       this.headHue = 110;
@@ -52,6 +57,8 @@ class Figure {
       this.bodyMaterial = new THREE.MeshLambertMaterial({ color: `hsl(${this.bodyHue}, 85%, 50%)` });
       
       this.init(); // Initialize the player parts
+
+      this.stop = true;
   }
 
   init() {
@@ -71,7 +78,7 @@ class Figure {
 
   createHead() {
       this.head = new THREE.Group();
-      const geometry = new THREE.BoxGeometry(1.4, 1.4, 1.4);
+      const geometry = new THREE.SphereGeometry(.8, 10, 10);
       const headMain = new THREE.Mesh(geometry, this.headMaterial);
       this.head.add(headMain);
       this.group.add(this.head);
@@ -132,7 +139,10 @@ class Figure {
   }
 
   // Run animation - move arms and legs
+
+
   animateRun(elapsedTime) {
+
       const speed = 5; // Control speed of running animation
       const angle = Math.sin(elapsedTime * speed) * 0.5;
       
@@ -140,12 +150,59 @@ class Figure {
       this.arms[1].rotation.x = -angle;
       this.legs[0].rotation.x = -angle;
       this.legs[1].rotation.x = angle;
+      
   }
 
   // Update direction to face movement
   updateDirection(velocity) {
-      const angle = Math.atan2(velocity.y, velocity.x);
-      this.group.rotation.z = angle - Math.PI / 2; // Adjust to face movement direction
+      
+      // if(way == 1){
+      //   this.group.rotation.set(Math.PI /2, Math.PI ,0 );
+      // }
+      // if(way == 2){
+      //   this.group.rotation.set(Math.PI /2, 0 ,0 );
+      // }
+      // if(way == 3){
+      //   this.group.rotation.set(Math.PI /2, -Math.PI/2 ,0 );
+      // }
+      // if(way == 4){
+      //   this.group.rotation.set(Math.PI /2, Math.PI/2 ,0 );
+      // }
+
+      if(velocity.x == 0){
+        if(velocity.y == 0){
+        }
+        else if (velocity.y > 0){ 
+          this.group.rotation.set(Math.PI /2, Math.PI ,0 );
+        }
+        else if (velocity.y < 0){ 
+          this.group.rotation.set(Math.PI /2, 0 ,0 );
+        }
+      }
+      if(velocity.x < 0){
+        if(velocity.y == 0){
+          this.group.rotation.set(Math.PI /2, -Math.PI/2 ,0 );
+        }
+        else if (velocity.y > 0){ 
+          this.group.rotation.set(Math.PI /2, -3*Math.PI/4 ,0 );
+        }
+        else if (velocity.y < 0){ 
+          this.group.rotation.set(Math.PI /2, -Math.PI/4 ,0 );
+        }
+      }
+      if(velocity.x > 0){
+        if(velocity.y == 0){
+          this.group.rotation.set(Math.PI /2, Math.PI/2 ,0 );
+        }
+        else if (velocity.y > 0){ 
+          this.group.rotation.set(Math.PI /2, 3*Math.PI/4 ,0 );
+        }
+        else if (velocity.y < 0){ 
+          this.group.rotation.set(Math.PI /2, Math.PI/4 ,0 );
+        }
+      }
+      
+      
   }
 }
 
@@ -219,16 +276,26 @@ const player = new Figure({ x: 0, y: 0, z: 0 });
 let velocity = new THREE.Vector3();
 const playerOBB = new OBB(player.group.position, new THREE.Vector3(0.5, 0.5, 0.5));
 
+
+
 // Update player OBB position in the movePlayer function
 function movePlayer() {
-    if (keys.ArrowUp) player.group.position.y += 0.1;
-    if (keys.ArrowDown) player.group.position.y -= 0.1;
-    if (keys.ArrowLeft) player.group.position.x -= 0.1;
-    if (keys.ArrowRight) player.group.position.x += 0.1;
+    if (keys.ArrowUp) velocity.y = 0.1;
+    if (keys.ArrowDown) velocity.y = -0.1;
+    if (keys.ArrowLeft) velocity.x = -0.1;
+    if (keys.ArrowRight) velocity.x = 0.1;
 
+    //console.log(velocity)
+    if(velocity.y > 0 || velocity.x > 0){
+      player.stop == false;
+    }
+    else{
+      player.stop;
+    }
     player.group.position.add(velocity);
     player.updateDirection(velocity);
 
+    // Reset velocity for next frame
     velocity.set(0, 0, 0);
 
     playerOBB.update(player.group.position, player.group.matrixWorld);
@@ -321,7 +388,7 @@ function createLaser() {
       laserOBB.update(laser.position, laser.matrixWorld);
   
       // Check Collision
-      if(laser.dim = false){
+      if(laser.dim == false){
         if (playerOBB.intersectsOBB(laserOBB)) {
             console.log("Collision detected!");
             // Handle collision (e.g., restart game or reduce health)
@@ -363,4 +430,6 @@ function animate() {
 }
 
 animate();
+
+
 
