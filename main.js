@@ -262,66 +262,272 @@ class Figure {
 }
 
 
+// class AABB {
+//   constructor(position, size) {
+//       this.position = position.clone();      // Center of the AABB
+//       this.size = size.clone();              // Half-sizes along each axis
+//       this.rotationMatrix = new THREE.Matrix4(); // Initial rotation as identity
+//   }
+
+//   update(position, rotationMatrix) {
+//       this.position.copy(position);
+//       this.rotationMatrix.copy(rotationMatrix);
+//   }
+
+//   intersectsAABB(other) {
+//       const EPSILON = 1e-6;
+//       const aAxes = [
+//           new THREE.Vector3(1, 0, 0).applyMatrix4(this.rotationMatrix),
+//           new THREE.Vector3(0, 1, 0).applyMatrix4(this.rotationMatrix),
+//           new THREE.Vector3(0, 0, 1).applyMatrix4(this.rotationMatrix),
+//       ];
+//       const bAxes = [
+//           new THREE.Vector3(1, 0, 0).applyMatrix4(other.rotationMatrix),
+//           new THREE.Vector3(0, 1, 0).applyMatrix4(other.rotationMatrix),
+//           new THREE.Vector3(0, 0, 1).applyMatrix4(other.rotationMatrix),
+//       ];
+
+//       const translation = other.position.clone().sub(this.position);
+//       const translationInA = [
+//           translation.dot(aAxes[0]),
+//           translation.dot(aAxes[1]),
+//           translation.dot(aAxes[2]),
+//       ];
+
+//       const ra = [];
+//       const rb = [];
+//       const R = [];
+//       const absR = [];
+
+//       for (let i = 0; i < 3; i++) {
+//           ra[i] = this.size.getComponent(i);
+//           rb[i] = other.size.getComponent(i);
+//           R[i] = [];
+//           absR[i] = [];
+//           for (let j = 0; j < 3; j++) {
+//               R[i][j] = aAxes[i].dot(bAxes[j]);
+//               absR[i][j] = Math.abs(R[i][j]) + EPSILON;
+//           }
+//       }
+
+//       for (let i = 0; i < 3; i++) {
+//           const rSum = ra[i] + rb[0] * absR[i][0] + rb[1] * absR[i][1] + rb[2] * absR[i][2];
+//           if (Math.abs(translationInA[i]) > rSum) return false;
+//       }
+
+//       for (let i = 0; i < 3; i++) {
+//           const rSum = rb[i] + ra[0] * absR[0][i] + ra[1] * absR[1][i] + ra[2] * absR[2][i];
+//           const translationInB = translation.dot(bAxes[i]);
+//           if (Math.abs(translationInB) > rSum) return false;
+//       }
+
+//       return true;
+//   }
+// }
+
+
 class OBB {
-  constructor(position, size) {
-      this.position = position.clone();      // Center of the OBB
-      this.size = size.clone();              // Half-sizes along each axis
-      this.rotationMatrix = new THREE.Matrix4(); // Initial rotation as identity
+  constructor(object, fixedSize = null) {
+      this.object = object; // The linked Three.js object
+      this.fixedSize = fixedSize; // Hardset size of the bounding box (optional)
+      this.box = new THREE.Box3(); // The bounding box
+      this.helper = null; // Visualization helper
+      this.corners = []; // Store the corner points for the OBB
+      this.axes = []; // Store the axes for SAT
+
+      if (this.fixedSize) {
+          // Use the fixed size and set up the box directly
+          this.initializeFixedSize();
+      } else {
+          this.update(); // Compute initial OBB based on object
+      }
   }
 
-  update(position, rotationMatrix) {
-      this.position.copy(position);
-      this.rotationMatrix.copy(rotationMatrix);
+  // Initialize the bounding box with a fixed size
+  initializeFixedSize() {
+      const size = this.fixedSize.clone();
+      const halfSize = size.multiplyScalar(0.5);
+
+      // Compute the local-space corners based on the fixed size
+      this.corners = [
+          new THREE.Vector3(-halfSize.x, -halfSize.y, -halfSize.z),
+          new THREE.Vector3(halfSize.x, -halfSize.y, -halfSize.z),
+          new THREE.Vector3(halfSize.x, halfSize.y, -halfSize.z),
+          new THREE.Vector3(-halfSize.x, halfSize.y, -halfSize.z),
+          new THREE.Vector3(-halfSize.x, -halfSize.y, halfSize.z),
+          new THREE.Vector3(halfSize.x, -halfSize.y, halfSize.z),
+          new THREE.Vector3(halfSize.x, halfSize.y, halfSize.z),
+          new THREE.Vector3(-halfSize.x, halfSize.y, halfSize.z),
+      ];
+
+      // Update the world-space axes
+      const rotationMatrix = new THREE.Matrix4().extractRotation(this.object.matrixWorld);
+      this.axes = [
+          new THREE.Vector3(1, 0, 0).applyMatrix4(rotationMatrix),
+          new THREE.Vector3(0, 1, 0).applyMatrix4(rotationMatrix),
+          new THREE.Vector3(0, 0, 1).applyMatrix4(rotationMatrix),
+      ];
+
+      // Transform the corners into world space
+      this.corners = this.corners.map((corner) => corner.applyMatrix4(this.object.matrixWorld));
   }
 
-  intersectsOBB(other) {
-      const EPSILON = 1e-6;
-      const aAxes = [
-          new THREE.Vector3(1, 0, 0).applyMatrix4(this.rotationMatrix),
-          new THREE.Vector3(0, 1, 0).applyMatrix4(this.rotationMatrix),
-          new THREE.Vector3(0, 0, 1).applyMatrix4(this.rotationMatrix),
-      ];
-      const bAxes = [
-          new THREE.Vector3(1, 0, 0).applyMatrix4(other.rotationMatrix),
-          new THREE.Vector3(0, 1, 0).applyMatrix4(other.rotationMatrix),
-          new THREE.Vector3(0, 0, 1).applyMatrix4(other.rotationMatrix),
+  // Update the OBB based on the object's transformation
+  update() {
+      if (this.fixedSize) {
+          // Skip recalculating size if it's fixed
+          this.initializeFixedSize();
+          return;
+      }
+
+
+
+      // Update the AABB
+      this.box.setFromObject(this.object);
+
+      // Get the box size and center
+      const size = new THREE.Vector3(1, 2.5, 1);
+      const center = new THREE.Vector3();
+      //this.box.getSize(size);
+      this.box.getCenter(center);
+      
+
+      // Create the corner points in local space
+      const heightSize = size.clone().multiplyScalar(0.5);
+      const ySize = size.clone().multiplyScalar(.5);
+      const halfSize = size.clone().multiplyScalar(0.5);
+
+
+     
+      this.corners = [
+          new THREE.Vector3(-halfSize.x, -ySize.y, -heightSize.z),
+          new THREE.Vector3(halfSize.x, -ySize.y, -heightSize.z),
+          new THREE.Vector3(halfSize.x, ySize.y, -heightSize.z),
+          new THREE.Vector3(-halfSize.x, ySize.y, -heightSize.z),
+          new THREE.Vector3(-halfSize.x, -ySize.y, heightSize.z),
+          new THREE.Vector3(halfSize.x, -ySize.y, heightSize.z),
+          new THREE.Vector3(halfSize.x, ySize.y, heightSize.z),
+          new THREE.Vector3(-halfSize.x, ySize.y, heightSize.z),
       ];
 
-      const translation = other.position.clone().sub(this.position);
-      const translationInA = [
-          translation.dot(aAxes[0]),
-          translation.dot(aAxes[1]),
-          translation.dot(aAxes[2]),
+      // Transform the corner points into world space
+      this.corners = this.corners.map((corner) => {
+          return corner.applyMatrix4(this.object.matrixWorld);
+      });
+
+      // Compute the OBB axes in world space
+      const rotationMatrix = new THREE.Matrix4().extractRotation(this.object.matrixWorld);
+      this.axes = [
+          new THREE.Vector3(1, 0, 0).applyMatrix4(rotationMatrix),
+          new THREE.Vector3(0, 1, 0).applyMatrix4(rotationMatrix),
+          new THREE.Vector3(0, 0, 1).applyMatrix4(rotationMatrix),
       ];
 
-      const ra = [];
-      const rb = [];
-      const R = [];
-      const absR = [];
+      // If there's a helper, update its geometry
+      if (this.helper) {
+          this.helper.geometry.dispose();
+          this.helper.geometry = this.createBoxGeometry();
+      }
+  }
 
-      for (let i = 0; i < 3; i++) {
-          ra[i] = this.size.getComponent(i);
-          rb[i] = other.size.getComponent(i);
-          R[i] = [];
-          absR[i] = [];
-          for (let j = 0; j < 3; j++) {
-              R[i][j] = aAxes[i].dot(bAxes[j]);
-              absR[i][j] = Math.abs(R[i][j]) + EPSILON;
+  // Create a wireframe geometry for visualization
+  createBoxGeometry() {
+      const geometry = new THREE.BufferGeometry();
+      const vertices = [];
+
+      // Define the edges of the box
+      const edges = [
+          [0, 1], [1, 2], [2, 3], [3, 0], // Bottom face
+          [4, 5], [5, 6], [6, 7], [7, 4], // Top face
+          [0, 4], [1, 5], [2, 6], [3, 7], // Vertical edges
+      ];
+
+      edges.forEach(([i, j]) => {
+          vertices.push(this.corners[i].x, this.corners[i].y, this.corners[i].z);
+          vertices.push(this.corners[j].x, this.corners[j].y, this.corners[j].z);
+      });
+
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      return geometry;
+  }
+
+  // Visualize the OBB
+  display(scene, color = 0x00ff00) {
+      if (!this.helper) {
+          const material = new THREE.LineBasicMaterial({ color });
+          const geometry = this.createBoxGeometry();
+          this.helper = new THREE.LineSegments(geometry, material);
+          scene.add(this.helper);
+      }
+  }
+
+  // Check if this OBB intersects with another OBB
+  intersects(other) {
+      const axes = [
+          ...this.axes,
+          ...other.axes,
+          ...this.axes.flatMap((a) =>
+              other.axes.map((b) => new THREE.Vector3().crossVectors(a, b).normalize())
+          ),
+      ];
+
+      for (const axis of axes) {
+          if (!axis.length()) continue; 
+
+          const [min1, max1] = this.projectOntoAxis(axis);
+          const [min2, max2] = other.projectOntoAxis(axis);
+
+          if (max1 < min2 || max2 < min1) {
+              return false; // Separating axis found
           }
       }
 
-      for (let i = 0; i < 3; i++) {
-          const rSum = ra[i] + rb[0] * absR[i][0] + rb[1] * absR[i][1] + rb[2] * absR[i][2];
-          if (Math.abs(translationInA[i]) > rSum) return false;
-      }
+      return true; // No separating axis found; OBBs intersect
+  }
 
-      for (let i = 0; i < 3; i++) {
-          const rSum = rb[i] + ra[0] * absR[0][i] + ra[1] * absR[1][i] + ra[2] * absR[2][i];
-          const translationInB = translation.dot(bAxes[i]);
-          if (Math.abs(translationInB) > rSum) return false;
-      }
+  // Project the OBB onto an axis
+  projectOntoAxis(axis) {
+      const projections = this.corners.map((corner) => corner.dot(axis));
+      return [Math.min(...projections), Math.max(...projections)];
+  }
+}
 
-      return true;
+
+class AABB {
+  constructor(object) {
+      this.object = object; // The linked Three.js object
+      this.min = new THREE.Vector3(); // Minimum corner of the bounding box
+      this.max = new THREE.Vector3(); // Maximum corner of the bounding box
+      this.boxHelper = null; // Helper for visualization
+      this.update(); // Initialize the bounds based on the object
+  }
+
+  update() {
+      const box = new THREE.Box3().setFromObject(this.object);
+      this.min.copy(box.min);
+      this.max.copy(box.max);
+
+      if (this.boxHelper) {
+          this.boxHelper.box.setFromObject(this.object);
+      }
+  }
+
+  display(scene) {
+      if (!this.boxHelper) {
+          this.boxHelper = new THREE.Box3Helper(new THREE.Box3().setFromObject(this.object), 0xff0000);
+          scene.add(this.boxHelper);
+      }
+  }
+
+  intersects(other) {
+      return (
+          this.min.x <= other.max.x &&
+          this.max.x >= other.min.x &&
+          this.min.y <= other.max.y &&
+          this.max.y >= other.min.y &&
+          this.min.z <= other.max.z &&
+          this.max.z >= other.min.z
+      );
   }
 }
 
@@ -329,7 +535,8 @@ class OBB {
 // Initialize the player figure
 const player = new Figure({ x: 0, y: 0, z: 0 });
 let velocity = new THREE.Vector3();
-const playerOBB = new OBB(player.group.position, new THREE.Vector3(0.1, 0.1, 0.1));
+const playerSize = new THREE.Vector3(1, 1, 2);
+const playerOBB = new OBB(player.group);
 
 
 window.addEventListener('keydown', (event) => {
@@ -399,7 +606,7 @@ function createLives(){
     }
     
   }
-// Update player OBB position in the movePlayer function
+// Update player AABB position in the movePlayer function
 let isJumping = false;
 const gravity = -.01;
 
@@ -451,7 +658,7 @@ function movePlayer() {
     // Reset velocity for next frame
     velocity.set(0, 0, velocity.z);
 
-    playerOBB.update(player.group.position, player.group.matrixWorld);
+    playerOBB.update();
 }
 
 
@@ -532,37 +739,35 @@ function createLaser() {
   // Create New Lasers Every Few Seconds
   setInterval(() => {
     clearLasers();
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
         createLaser();
         last_laser = clock.getElapsedTime();
       }
     console.log(camera.position)
   }, 3000);
 
-  
+  const laserSize = new THREE.Vector3(100, 0.1, 0.1);
   // Update Lasers and Check for Collision
   function updateLasers() {
     lasers.forEach((laser, index) => {
-      // Transition laser to bright mode
-    //   if (laser.dim) {
-    //     laser.dim = false;
-    //     laser.material.color.set(0xff0000);
-    //   }
   
-      // Update Laser OBB
-      const laserOBB = new OBB(laser.position, new THREE.Vector3(100, 0.05, 0.05));
-      laserOBB.update(laser.position, laser.matrixWorld);
+      // Update Laser AABB
+      const laserOBB = new OBB(laser, laserSize);
+      laserOBB.update();
+      
       
       
       // Check Collision
       if(laser.dim == false && clock.getElapsedTime() - last_collision > 3){
-        if (playerOBB.intersectsOBB(laserOBB)) {
+        if (playerOBB.intersects(laserOBB)) {
+            laserOBB.display(scene);
             console.log("Collision detected!");
             takeDamage();
 
             // Handle collision (e.g., restart game or reduce health)
           }
       }
+    
       
     });
   }
@@ -643,11 +848,14 @@ document.addEventListener('keyup', (event) => keys[event.key] = false);
 createLives();
 console.log(lives);
 
+playerOBB.display(scene);
+
 // Animation Loop
 function animate() {
   
   requestAnimationFrame(animate);
   let time = clock.getElapsedTime();
+  playerOBB.update();
   movePlayer();
   updateLasers();
   if((time - last_laser) > 1){
@@ -657,9 +865,8 @@ function animate() {
     });
   }
   player.animateRun(time);
-  //updateOBBHelper();
-  
-  playerOBB.update(player.group.position, player.group.matrixWorld);
+  //updateAABBHelper();
+  playerOBB.update();
   controls.update(); 
   renderer.render(scene, camera);
 }
