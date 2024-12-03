@@ -33,38 +33,6 @@ camera.lookAt(0,0,0);
 // Orbit Controls (for testing)
 const controls = new OrbitControls(camera, renderer.domElement);
 
-function initialize_event_listeners() {
-  const arrow_keys = [ 'ArrowUp', 'ArrowDown', 'ArrowRight', 'ArrowLeft' ];
-
-  window.addEventListener( 'pointerdown', ( event ) => {}, false);
-  window.addEventListener( 'pointerup', ( event ) => {}, false);
-  window.addEventListener( 'wheel', ( event ) => {}, false);
-  window.addEventListener( 'keydown', ( event ) => {
-    if (arrow_keys.some( k => k === event.key ) || event.ctrlKey || event.metaKey || event.shiftKey) {
-      controls.listenToKeyEvents( window );
-    }
-  }, false);
-  window.addEventListener( 'keyup', ( event ) => {
-    if (arrow_keys.some( k => k === event.key )) {
-      controls.stopListenToKeyEvents();
-    }
-  }, false);
-}
-
-initialize_event_listeners();
-
-controls.keys = {
-
-  LEFT: 'ArrowLeft', 
-
-  UP: 'ArrowUp', 
-
-  RIGHT: 'ArrowRight', 
-
-  BOTTOM: 'ArrowDown' 
-
-};
-
 const lightAmbient = new THREE.AmbientLight(0x9eaeff, 0.5)
 scene.add(lightAmbient)
 
@@ -103,6 +71,7 @@ class Figure {
       
       this.init(); // Initialize the player parts
 
+      this.crouching = false;
       this.stop = true;
   }
 
@@ -131,36 +100,6 @@ class Figure {
       this.head.position.y = 1.65;
       this.createEyes();
   }
-
-  // createLives(){
-  //   const lives = new THREE.Group();
-  //   const x = 0, y = 0;
-  //   const heartShape = new THREE.Shape();
-
-  //     heartShape.moveTo( x + 5, y + 5 );
-  //     heartShape.bezierCurveTo( x + 5, y + 5, x + 4, y, x, y );
-  //     heartShape.bezierCurveTo( x - 6, y, x - 6, y + 7,x - 6, y + 7 );
-  //     heartShape.bezierCurveTo( x - 6, y + 11, x - 3, y + 15.4, x + 5, y + 19 );
-  //     heartShape.bezierCurveTo( x + 12, y + 15.4, x + 16, y + 11, x + 16, y + 7 );
-  //     heartShape.bezierCurveTo( x + 16, y + 7, x + 16, y, x + 10, y );
-  //     heartShape.bezierCurveTo( x + 7, y, x + 5, y + 5, x + 5, y + 5 );
-
-  //     const geometry = new THREE.ShapeGeometry( heartShape );
-  //     const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-  //     for(let i = 0; i < 2; i++) {
-  //       const heart = new THREE.Mesh( geometry, material );
-  //       heart.rotation.set(0,0,Math.Pi/2);
-  //       heart.material.side = THREE.DoubleSide;
-  //       const m = i % 2 === 0 ? 1 : -1;
-  //       lives.add(heart);
-  //       heart.position.x = 0.5* m;
-  //       heart.scale.set(.5,.5,.5);
-        
-  //   }
-      
-  //     this.head.add(lives)
-  //     lives.position.set(0, 20, 0);
-  // }
 
   createEyes() {
       const eyes = new THREE.Group();
@@ -214,18 +153,57 @@ class Figure {
       }
   }
 
+  crouch() {
+      if (this.crouching) return; // Avoid reapplying the crouch pose if already crouched
+
+      // Lower the body
+      this.body.position.y = -0.7;
+
+      // Bend the legs
+      this.legs[0].rotation.x = degreesToRadians(45); // Front leg bends backward
+      this.legs[1].rotation.x = degreesToRadians(-45); // Back leg bends forward
+
+      // Optionally adjust the head position
+      this.head.position.y = 1.0;
+
+      this.crouching = true; // Mark the figure as crouching
+  }
+
+  stand() {
+    if (!this.crouching) return; // Avoid resetting if already standing
+
+    // Reset the body position
+    this.body.position.y = 0;
+
+    // Reset the legs
+    this.legs[0].rotation.x = 0; // Front leg straight
+    this.legs[1].rotation.x = 0; // Back leg straight
+
+    // Reset the head position
+    this.head.position.y = 1.65;
+
+    this.crouching = false; // Mark the figure as standing
+}
+
+
+
+
   // Run animation - move arms and legs
 
 
   animateRun(elapsedTime) {
 
-      const speed = 5; // Control speed of running animation
-      const angle = Math.sin(elapsedTime * speed) * 0.5;
+      if (!this.stop){
+        const speed = 5; // Control speed of running animation
+        const angle = Math.sin(elapsedTime * speed) * 0.5;
+        
+        this.arms[0].rotation.x = angle;
+        this.arms[1].rotation.x = -angle;
+        this.legs[0].rotation.x = -angle;
+        this.legs[1].rotation.x = angle;
+      }
+
       
-      this.arms[0].rotation.x = angle;
-      this.arms[1].rotation.x = -angle;
-      this.legs[0].rotation.x = -angle;
-      this.legs[1].rotation.x = angle;
       
   }
 
@@ -278,6 +256,7 @@ class Figure {
         }
       }
       
+
       
   }
 }
@@ -362,6 +341,10 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault();
     keys.Space = true;
   }
+  if (event.code === 'Shift') {
+    event.preventDefault();
+    keys.Shift = true;
+  }
 });
 
 window.addEventListener('keyup', (event) => {
@@ -370,6 +353,7 @@ window.addEventListener('keyup', (event) => {
   if (event.key === 'a' || event.key === 'A') keys.A = false;
   if (event.key === 'd' || event.key === 'D') keys.D = false;
   if (event.code === 'Space') keys.Space = false;
+  if (event.code === 'Shift') keys.Shift = false;
 });
 
 
@@ -432,6 +416,17 @@ function movePlayer() {
       console.log(player.group.position);
     }
 
+    if (keys.Shift && !isJumping) {
+      player.crouch();
+      player.stop = true;
+      velocity.x = 0;
+      velocity.y = 0;
+    }
+    if (!keys.Shift && !isJumping) {
+      player.stand();
+      player.stop = false;
+    }
+
     if (velocity.x !== 0 || velocity.y !== 0 || velocity.z !== 0) {
       player.stop = false;
     }
@@ -479,6 +474,18 @@ const laserGroup = new THREE.Group();
 scene.add(laserGroup);
 let last_collision = clock.getElapsedTime();
 
+function getHeight() {
+  var i = true;
+  i = (Math.floor(Math.random() * 2) == 0);
+  if(i){
+    return 2;
+  }
+  else{
+    return 0;
+  }
+}
+
+
 // Laser Creation Function
 function createLaser() {
   const laserGeometry = new THREE.BoxGeometry(100, 0.1, 0.1);
@@ -486,7 +493,7 @@ function createLaser() {
   const laser = new THREE.Mesh(laserGeometry, laserMaterial);
 
   // Random Position and Rotation
-  laser.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, 0);
+  laser.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, getHeight());
   laser.rotation.z = Math.random() * Math.PI;
 
   // Laser Properties
@@ -559,7 +566,11 @@ function createLaser() {
       
     });
   }
-  
+
+
+
+
+
 function takeDamage(){
   if(lives.length){
     let life = lives.pop();
@@ -572,6 +583,7 @@ function takeDamage(){
     }
   }
 }
+
 
 function displayGameOverScreen() {
   const loader = new FontLoader();
@@ -626,13 +638,6 @@ document.addEventListener('keydown', (event) => keys[event.key] = true);
 document.addEventListener('keyup', (event) => keys[event.key] = false);
 
 
-// const playerOBBHelper = new THREE.BoxHelper(new THREE.Mesh(new THREE.BoxGeometry(1, 1.8, 1)), 0x00ff00);
-// scene.add(playerOBBHelper);
-
-// function updateOBBHelper() {
-//   playerOBBHelper.position.copy(playerOBB.position);
-//   playerOBBHelper.rotation.setFromRotationMatrix(playerOBB.rotationMatrix);
-// }
 
 
 createLives();
