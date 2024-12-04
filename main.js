@@ -31,7 +31,7 @@ camera.position.set(0, -17, 6 );
 camera.lookAt(0,0,0);
 
 // Orbit Controls (for testing)
-const controls = new OrbitControls(camera, renderer.domElement);
+//const controls = new OrbitControls(camera, renderer.domElement);
 
 const lightAmbient = new THREE.AmbientLight(0x9eaeff, 0.5)
 scene.add(lightAmbient)
@@ -262,68 +262,6 @@ class Figure {
 }
 
 
-// class AABB {
-//   constructor(position, size) {
-//       this.position = position.clone();      // Center of the AABB
-//       this.size = size.clone();              // Half-sizes along each axis
-//       this.rotationMatrix = new THREE.Matrix4(); // Initial rotation as identity
-//   }
-
-//   update(position, rotationMatrix) {
-//       this.position.copy(position);
-//       this.rotationMatrix.copy(rotationMatrix);
-//   }
-
-//   intersectsAABB(other) {
-//       const EPSILON = 1e-6;
-//       const aAxes = [
-//           new THREE.Vector3(1, 0, 0).applyMatrix4(this.rotationMatrix),
-//           new THREE.Vector3(0, 1, 0).applyMatrix4(this.rotationMatrix),
-//           new THREE.Vector3(0, 0, 1).applyMatrix4(this.rotationMatrix),
-//       ];
-//       const bAxes = [
-//           new THREE.Vector3(1, 0, 0).applyMatrix4(other.rotationMatrix),
-//           new THREE.Vector3(0, 1, 0).applyMatrix4(other.rotationMatrix),
-//           new THREE.Vector3(0, 0, 1).applyMatrix4(other.rotationMatrix),
-//       ];
-
-//       const translation = other.position.clone().sub(this.position);
-//       const translationInA = [
-//           translation.dot(aAxes[0]),
-//           translation.dot(aAxes[1]),
-//           translation.dot(aAxes[2]),
-//       ];
-
-//       const ra = [];
-//       const rb = [];
-//       const R = [];
-//       const absR = [];
-
-//       for (let i = 0; i < 3; i++) {
-//           ra[i] = this.size.getComponent(i);
-//           rb[i] = other.size.getComponent(i);
-//           R[i] = [];
-//           absR[i] = [];
-//           for (let j = 0; j < 3; j++) {
-//               R[i][j] = aAxes[i].dot(bAxes[j]);
-//               absR[i][j] = Math.abs(R[i][j]) + EPSILON;
-//           }
-//       }
-
-//       for (let i = 0; i < 3; i++) {
-//           const rSum = ra[i] + rb[0] * absR[i][0] + rb[1] * absR[i][1] + rb[2] * absR[i][2];
-//           if (Math.abs(translationInA[i]) > rSum) return false;
-//       }
-
-//       for (let i = 0; i < 3; i++) {
-//           const rSum = rb[i] + ra[0] * absR[0][i] + ra[1] * absR[1][i] + ra[2] * absR[2][i];
-//           const translationInB = translation.dot(bAxes[i]);
-//           if (Math.abs(translationInB) > rSum) return false;
-//       }
-
-//       return true;
-//   }
-// }
 
 
 class OBB {
@@ -493,44 +431,6 @@ class OBB {
 }
 
 
-class AABB {
-  constructor(object) {
-      this.object = object; // The linked Three.js object
-      this.min = new THREE.Vector3(); // Minimum corner of the bounding box
-      this.max = new THREE.Vector3(); // Maximum corner of the bounding box
-      this.boxHelper = null; // Helper for visualization
-      this.update(); // Initialize the bounds based on the object
-  }
-
-  update() {
-      const box = new THREE.Box3().setFromObject(this.object);
-      this.min.copy(box.min);
-      this.max.copy(box.max);
-
-      if (this.boxHelper) {
-          this.boxHelper.box.setFromObject(this.object);
-      }
-  }
-
-  display(scene) {
-      if (!this.boxHelper) {
-          this.boxHelper = new THREE.Box3Helper(new THREE.Box3().setFromObject(this.object), 0xff0000);
-          scene.add(this.boxHelper);
-      }
-  }
-
-  intersects(other) {
-      return (
-          this.min.x <= other.max.x &&
-          this.max.x >= other.min.x &&
-          this.min.y <= other.max.y &&
-          this.max.y >= other.min.y &&
-          this.min.z <= other.max.z &&
-          this.max.z >= other.min.z
-      );
-  }
-}
-
 
 // Initialize the player figure
 const player = new Figure({ x: 0, y: 0, z: 0 });
@@ -538,6 +438,29 @@ let velocity = new THREE.Vector3();
 const playerSize = new THREE.Vector3(1, 1, 2);
 const playerOBB = new OBB(player.group);
 
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+
+window.addEventListener('click', onMouseClick, false);
+
+function onMouseClick(event) {
+    // Convert screen coordinates to normalized device coordinates (NDC)
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    console.log(mouse.x);
+    console.log(player.group.position.x);
+    // Update the raycaster with the camera and mouse position
+    raycaster.setFromCamera(mouse, camera);
+
+    // Calculate objects intersected by the raycaster
+    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    if (intersects.length > 0) {
+        console.log('Intersected object:', intersects[0].object);
+    }
+}
 
 window.addEventListener('keydown', (event) => {
   if (event.key === 'w' || event.key === 'W') keys.W = true;
@@ -616,11 +539,16 @@ function movePlayer() {
     if (keys.A) velocity.x = -0.1;
     if (keys.D) velocity.x = 0.1;
 
+    
+    
+    velocity.y = mouse.y - player.group.position.y/ 20 ;
+    velocity.x = mouse.x- player.group.position.x / 20 ;
+
     if (keys.Space && !isJumping) {
       isJumping = true;
       velocity.z = .3 // Initial upward velocity, tweak this with gravity const for smoother/faster animations
-      console.log("jump, position at");
-      console.log(player.group.position);
+      //console.log("jump, position at");
+      //console.log(player.group.position);
     }
 
     if (keys.Shift && !isJumping) {
@@ -743,7 +671,7 @@ function createLaser() {
         createLaser();
         last_laser = clock.getElapsedTime();
       }
-    console.log(camera.position)
+    //console.log(camera.position)
   }, 3000);
 
   const laserSize = new THREE.Vector3(100, 0.1, 0.1);
@@ -760,8 +688,8 @@ function createLaser() {
       // Check Collision
       if(laser.dim == false && clock.getElapsedTime() - last_collision > 3){
         if (playerOBB.intersects(laserOBB)) {
-            laserOBB.display(scene);
-            console.log("Collision detected!");
+            //laserOBB.display(scene);
+            //console.log("Collision detected!");
             takeDamage();
 
             // Handle collision (e.g., restart game or reduce health)
@@ -867,7 +795,7 @@ function animate() {
   player.animateRun(time);
   //updateAABBHelper();
   playerOBB.update();
-  controls.update(); 
+  //controls.update(); 
   renderer.render(scene, camera);
 }
 
