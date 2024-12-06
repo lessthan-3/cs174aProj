@@ -9,6 +9,7 @@ let mouseMode = false;
 let invincible = 0;
 let cubeToggle = 0;
 let demoMode = 0;
+let tol = 0;
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -584,12 +585,14 @@ window.addEventListener('keyup', (event) => {
     if (event.key === 'd' || event.key === 'D') keys.D = false;
     if (event.key === 'r' || event.key === 'R') startGame();
     if (event.key === 't' || event.key === 'T') {
-	mouseMode = true;
-	startGame();
+	if (!gameStarted){
+	    mouseMode = true;
+	    tol = 1e-2;
+	    startGame();
+	}
     }
     if (event.key === 'g' || event.key === 'G') {
 	demoMode = true;
-	startGame();
     }
     if (event.code === 'Space') keys.Space = false;
     if (event.code === 'Shift') keys.Shift = false;
@@ -684,13 +687,12 @@ function movePlayer() {
 	if (keys.D) velocity.x = 0.2;
     }
 
-
     if (mouseMode) {
-	let tol = 0.2;
+	//let tol = 0.2;
 	//let dy = clicky - player.group.position.y;
 	//let dx = clickx - player.group.position.x;
-	velocity.y = (clicky - player.group.position.y)/40;
-	velocity.x = (clickx - player.group.position.x)/40;
+	velocity.y = (clicky - player.group.position.y)/30;
+	velocity.x = (clickx - player.group.position.x)/30;
 
 	//console.log(player.group.position.x)
 	//console.log(player.group.position.y)
@@ -735,10 +737,9 @@ function movePlayer() {
 	player.stop = false;
     }
 
-    if (velocity.x !== 0 || velocity.y !== 0 || velocity.z !== 0) {
+    if (Math.abs(velocity.x) > tol || Math.abs(velocity.y) > tol || Math.abs(velocity.z) > tol) {
 	player.stop = false;
-    }
-    else {
+    } else {
 	player.stop = true;
     }
     player.group.position.add(velocity);
@@ -1068,7 +1069,7 @@ function displayStartScreen() {
 	// Create a "Game Over" message 
 	let time = Math.floor(clock.getElapsedTime());
 	const gameOverMessage = "Welcome to Laser Maze";
-	const survivedMessage = `The goal is to survive, press r for keyboard and t for mouse,\ng for demo mode`;
+	const survivedMessage = `The goal is to survive, press r for keyboard and t for mouse.\nPress g to enable demo mode (100 lives).`;
 	const gameOverText = new TextGeometry(gameOverMessage, {
 	    font: font, 
 	    size: 2,  
@@ -1260,7 +1261,7 @@ function animate() {
             // Collision Detection with Player
             if (Math.abs(sweeper.position.x - player.group.position.x) < 1 && player.group.position.z < 1 && time - last_collision > 1) {
                 takeDamage();
-		last_collision = elapsed_time;
+		last_collision = time;
             }
         }
 
