@@ -11,7 +11,7 @@ import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 // const aspectRatio = window.innerWidth / window.innerHeight;
-// const zoom = 10; // Adjust zoom factor to control visible area
+// const zoom = 30; // Adjust zoom factor to control visible area
 // const frustumSize = zoom;
 
 // const camera = new THREE.OrthographicCamera(
@@ -29,15 +29,69 @@ document.body.appendChild(renderer.domElement);
 //test comment
 
 // Camera Position
-camera.position.set(0, -17, 6 );
+camera.position.set(0, -17, 0 );
 camera.lookAt(0,0,0);
 
-// Orbit Controls (for testing)
-//const controls = new OrbitControls(camera, renderer.domElement);
 
-const lightAmbient = new THREE.AmbientLight(0x9eaeff, 0.5)
+
+function rotateCameraAroundZ(sceneCenter = new THREE.Vector3(0, 0, 0), angle = Math.PI / 2) {
+    // Translate the camera to origin relative to the scene center
+    const offset = new THREE.Vector3().subVectors(camera.position, sceneCenter);
+
+    // Apply the rotation around the Z-axis
+    const cosAngle = Math.cos(angle);
+    const sinAngle = Math.sin(angle);
+    const rotatedX = cosAngle * offset.x - sinAngle * offset.y;
+    const rotatedY = sinAngle * offset.x + cosAngle * offset.y;
+
+    // Update the camera's position
+    camera.position.set(rotatedX + sceneCenter.x, rotatedY + sceneCenter.y, offset.z + sceneCenter.z);
+
+    // Make the camera look at the scene center
+    camera.lookAt(sceneCenter);
+}
+
+// Orbit Controls (for testing)
+const controls = new OrbitControls(camera, renderer.domElement);
+
+
+
+const lightAmbient = new THREE.AmbientLight(0x808080, 0.2)
 scene.add(lightAmbient)
 
+
+const directionalLight = new THREE.DirectionalLight(0x808080, .3); // Red light with intensity 1
+directionalLight.position.copy(camera.position); // Match the camera's position
+
+// // Set the direction of the light to point where the camera is looking
+// const lightTarget = new THREE.Object3D();
+// lightTarget.position.set(0, 0, 0); // Light looks at the origin
+// scene.add(lightTarget);
+
+// directionalLight.target = lightTarget;
+// scene.add(directionalLight);
+
+// const directionalLight1 = new THREE.DirectionalLight(0x808080, .3); // Red light with intensity 1
+// directionalLight1.position.copy(camera.position); // Match the camera's position
+
+// // Set the direction of the light to point where the camera is looking
+// const lightTarget1 = new THREE.Object3D();
+// lightTarget1.position.set(40, 0, 0); // Light looks at the origin
+// scene.add(lightTarget1);
+
+// directionalLight1.target = lightTarget1;
+// scene.add(directionalLight1);
+
+// const directionalLight2 = new THREE.DirectionalLight(0x808080, .3); // Red light with intensity 1
+// directionalLight2.position.copy(camera.position); // Match the camera's position
+
+// // Set the direction of the light to point where the camera is looking
+// const lightTarget2 = new THREE.Object3D();
+// lightTarget2.position.set(-40, 0, 0); // Light looks at the origin
+// scene.add(lightTarget2);
+
+// directionalLight2.target = lightTarget2;
+// scene.add(directionalLight2);
 
 const degreesToRadians = (degrees) => {
     return degrees * (Math.PI / 180)
@@ -46,7 +100,7 @@ const degreesToRadians = (degrees) => {
 
 // Player Character (Figure)
 class Figure {
-    constructor(params) {
+    constructor(params) {	
 	this.params = {
 	    x: 0,
 	    y: 0,
@@ -65,11 +119,16 @@ class Figure {
 	this.group.rotation.set(Math.PI /2, 0 ,0 );
 
 	// Material
-	this.headHue = 10;
-	this.bodyHue = 30;
-	this.headLightness = 55;
-	this.headMaterial = new THREE.MeshPhongMaterial({ color: `hsl(${this.headHue}, 30%, ${this.headLightness}%)` });
-	this.bodyMaterial = new THREE.MeshPhongMaterial({ color: `hsl(${this.bodyHue}, 85%, 50%)` });
+	this.headMaterial = new THREE.MeshPhongMaterial({ color: 0xffdbac});
+	this.legMaterial = new THREE.MeshPhongMaterial({color: 0x000000});
+
+	const bodyTexture = new THREE.TextureLoader().load('fit4.png'); // Load your texture
+
+// // Configure the material with the texture
+// const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
+	this.bodyMaterial = new THREE.MeshStandardMaterial({ map: bodyTexture });
+
+
 
 	this.init(); // Initialize the player parts
 
@@ -82,13 +141,17 @@ class Figure {
 	this.createHead();
 	this.createArms();
 	this.createLegs();
+	this.createHair();
 	//this.createLives();
     }
+
+	
 
     createBody() {
 	this.body = new THREE.Group();
 	const geometry = new THREE.CylinderGeometry(.5, .5, 1.8, 10);
 	const bodyMain = new THREE.Mesh(geometry, this.bodyMaterial);
+	this.body.rotateY(degreesToRadians(180));
 	this.body.add(bodyMain);
 	this.group.add(this.body);
     }
@@ -102,7 +165,8 @@ class Figure {
 	this.head.position.y = 1.65;
 	this.createEyes();
     }
-
+ 
+	
     createEyes() {
 	const eyes = new THREE.Group();
 	const geometry = new THREE.SphereGeometry(0.15, 12, 8);
@@ -144,7 +208,7 @@ class Figure {
 	const geometry = new THREE.BoxGeometry(0.25, 0.8, 0.25);
 
 	for(let i = 0; i < 2; i++) {
-	    const leg = new THREE.Mesh(geometry, this.headMaterial);
+	    const leg = new THREE.Mesh(geometry, this.legMaterial);
 	    const m = i % 2 === 0 ? 1 : -1;
 	    const legGroup = new THREE.Group();
 	    legGroup.add(leg);
@@ -153,13 +217,44 @@ class Figure {
 	    this.body.add(legGroup);
 	    this.legs.push(legGroup);
 	}
+
+	
     }
+	createHair() {
+		const hairGroup = new THREE.Group(); // Create a group to hold the hair
+	
+		// Define the geometry and material for the hair
+		 // Small rectangle dimensions
+		const hairMaterial = new THREE.MeshPhongMaterial({ color: 0x2c1d0a }); // Brown hair color
+	
+		for (let i = 0; i < 100; i++) {
+			let hairGeometry = new THREE.BoxGeometry(0.1, 0.3 + Math.random() * .3 , .1);
+			const hairStrand = new THREE.Mesh(hairGeometry, hairMaterial);
+			
+	
+			// Randomize the position of the hair strands
+			const offsetX = (Math.random() - 0.5) * 1.2; // Random X position within a range
+			const offsetY = -.1; // Position slightly above the head
+			const offsetZ = (Math.random() - 0.5) * 1.2; // Random Z position within a range
+			
+			hairStrand.rotation.x = degreesToRadians((Math.random() - 0.5) * 30);
+			hairStrand.rotation.y = degreesToRadians((Math.random() - 0.5) * 180);
+			hairStrand.rotation.z = degreesToRadians((Math.random() - 0.5) * 180);
+			hairStrand.position.set(offsetX, offsetY, offsetZ);
+			hairGroup.add(hairStrand); // Add each strand to the hair group
+		}
+	
+		// Attach the hair group to the head
+		this.head.add(hairGroup);
+		hairGroup.position.y = 0.8; // Position the hair group on top of the head
+	}
+	
 
     crouch() {
 	if (this.crouching) return; // Avoid reapplying the crouch pose if already crouched
 
 	// Lower the body
-	this.body.position.y = -0.7;
+	this.body.position.y = -0.5;
 
 	// Bend the legs
 	this.legs[0].rotation.x = degreesToRadians(45); // Front leg bends backward
@@ -264,7 +359,6 @@ class Figure {
 
     }
 }
-
 
 
 
@@ -439,6 +533,9 @@ let velocity = new THREE.Vector3();
 const playerSize = new THREE.Vector3(1, 1, 2);
 const playerOBB = new OBB(player.group);
 
+let clickx = 0;
+let clicky = 0;
+
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -453,18 +550,25 @@ function onMouseClick(event) {
     // Convert screen coordinates to normalized device coordinates (NDC)
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    console.log(mouse.x, mouse.y);
-    console.log(player.group.position.x);
-    // Update the raycaster with the camera and mouse position
+
+    // Update the raycaster
     raycaster.setFromCamera(mouse, camera);
 
-    // Calculate objects intersected by the raycaster
-    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    // Intersect with the floor
+    const intersects = raycaster.intersectObject(floor);
 
     if (intersects.length > 0) {
-	console.log('Intersected object:', intersects[0].object);
+        const point = intersects[0].point; // The exact point of intersection
+        console.log(`Clicked position on floor: X=${point.x}, Y=${point.y}`);
+		clickx = point.x;
+		clicky = point.y;
+
     }
 }
+
+
+
 
 window.addEventListener('keydown', (event) => {
     if (event.key === 'w' || event.key === 'W'){
@@ -491,6 +595,8 @@ window.addEventListener('keydown', (event) => {
 	event.preventDefault();
 	keys.Shift = true;
     }
+
+	
 });
 
 window.addEventListener('keyup', (event) => {
@@ -498,6 +604,7 @@ window.addEventListener('keyup', (event) => {
     if (event.key === 's' || event.key === 'S') keys.S = false;
     if (event.key === 'a' || event.key === 'A') keys.A = false;
     if (event.key === 'd' || event.key === 'D') keys.D = false;
+	if (event.key === 'r' || event.key === 'R') rotateCameraAroundZ();
     if (event.code === 'Space') keys.Space = false;
     if (event.code === 'Shift') keys.Shift = false;
 });
@@ -535,10 +642,9 @@ function createLives(){
 	heart.rotateX(Math.PI/2);
 	heart.rotateZ(Math.PI);
 	heart.position.x = 5* i - 5;
-	heart.position.y= 80;
-	heart.position.z = 30;
+	heart.position.y= 39;
+	heart.position.z = 4;
 	heart.scale.set(.2,.2,.2);
-
 	lives.push(heart);
 	livesGroup.add(heart);
 
@@ -557,17 +663,32 @@ function movePlayer() {
 
     if (mouseLock) {
 	let tol = 0.2;
-	let dy = mouse.y - player.group.position.y / 20;
-	let dx = mouse.x - player.group.position.x / 20;
-	velocity.y = mouse.y - player.group.position.y/ 20 ;
-	velocity.x = mouse.x - player.group.position.x / 20 ;
+	//let dy = clicky - player.group.position.y;
+	//let dx = clickx - player.group.position.x;
+	velocity.y = (clicky - player.group.position.y)/20;
+	velocity.x = (clickx - player.group.position.x)/20;
 	
+	//console.log(player.group.position.x)
+	//console.log(player.group.position.y)
 	// if (dx**2 + dy**2 > tol){
 	//     velocity.y = Math.sign(dy) * 0.15 * (1 + (dy/dx)**2)**(-0.5);
 	//     velocity.x = Math.sign(dx) * 0.15 * (1 + (dx/dy)**2)**(-0.5);
 	//     //velocity.x = Math.sign(dx) * Math.sqrt(0.15**2 - (velocity.y)**2);
 	// }
     }
+
+	if(player.group.position.x > 39 && velocity.x > 0){
+		velocity.x = 0
+	}
+	if(player.group.position.y > 39 && velocity.y > 0){
+		velocity.y = 0
+	}
+	if(player.group.position.x < -39 && velocity.x < 0){
+		velocity.x = 0
+	}
+	if(player.group.position.y < -39 && velocity.y > 0){
+		velocity.y = 0
+	}
 
     if (keys.Space && !isJumping) {
 	isJumping = true;
@@ -580,7 +701,10 @@ function movePlayer() {
 	player.crouch();
 	player.stop = true;
 	velocity.x = 0;
-	velocity.y = 0;
+	velocity.y = 0;	
+	console.log(player.group.position.x);
+	console.log(player.group.position.y);
+	console.log(camera.position);
     }
     if (!keys.Shift && !isJumping) {
 	player.stand();
@@ -801,10 +925,85 @@ document.addEventListener('keyup', (event) => keys[event.key] = false);
 createLives();
 console.log(lives);
 
-playerOBB.display(scene);
+//playerOBB.display(scene);
+
+
+//floor
+
+// const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+// directionalLight.position.set(50, 100, 50);
+// scene.add(directionalLight);
+
+
+// Create a PlaneGeometry for the floor
+const floorGeometry = new THREE.PlaneGeometry(80, 80); // 100x100 units]
+
+
+const floorTexture = new THREE.TextureLoader().load('graytexture.jpg'); // Load your texture
+
+// Configure the material with the texture
+const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
+
+
+
+// Create the floor mesh
+const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+
+// const testMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green material
+// floor.material = testMaterial;
+
+// Rotate the floor to lie on the XZ plane
+//floor.rotation.x = -Math.PI / 2; // Rotate 90 degrees to align with XZ
+floor.position.z = -2; // Place it at y=0
+
+// Optionally, receive shadows for realism
+floor.receiveShadow = true;
+
+// Add the floor to the scene
+scene.add(floor);
+
+const wallGeometry = new THREE.PlaneGeometry(200, 200);
+// Wall 1: Back wall
+const wall1 = new THREE.Mesh(wallGeometry, floorMaterial);
+wall1.position.x = -40 ; // Position at the back
+wall1.position.y = 40; // Lift to match the center of the wall
+wall1.rotation.x = Math.PI / 2; 
+scene.add(wall1);
+
+// Wall 2: Front wall
+const wall2 = new THREE.Mesh(wallGeometry, floorMaterial);
+wall2.position.x = 40 ; // Position at the back
+wall2.position.y = -40; // Lift to match the center of the wall
+wall2.rotation.x = Math.PI / 2; 
+scene.add(wall2);
+
+// Wall 3: Left wall
+const wall3 = new THREE.Mesh(wallGeometry, floorMaterial);
+wall3.position.x = -40; // Position to the left
+wall3.position.y = 40; // Lift to match the center of the wall
+wall3.rotation.y = Math.PI / 2; // Rotate 90 degrees to face inward
+scene.add(wall3);
+
+// Wall 4: Right wall
+const wall4 = new THREE.Mesh(wallGeometry, floorMaterial);
+wall4.position.x = 40; // Position to the right
+wall4.position.y = 40; // Lift to match the center of the wall
+wall4.rotation.y = -Math.PI / 2; // Rotate -90 degrees to face inward
+scene.add(wall4);
+
+wall1.receiveShadow = true;
+wall2.receiveShadow = true;
+wall3.receiveShadow = true;
+wall4.receiveShadow = true;
+
 
 // Animation Loop
 function animate() {
+
+
+
+	camera.position.set(player.group.position.x, player.group.position.y - 7, player.group.position.z + 4);
+	camera.lookAt(player.group.position); 
 
     requestAnimationFrame(animate);
     let time = clock.getElapsedTime();
