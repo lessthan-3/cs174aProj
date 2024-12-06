@@ -857,7 +857,7 @@ function clearLasers() {
 let last_laser = clock.getElapsedTime();
 
 let cube = null;
-const cube_light = new THREE.PointLight(0xffffff, 6, 12);
+let cube_light = new THREE.PointLight(0xffffff, 6, 12);
 cube_light.castShadow = true;
 // Create New Lasers Every Few Seconds
 setInterval(() => {
