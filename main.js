@@ -653,6 +653,38 @@ function createLives(){
     }
 
 }
+
+function addLife(){
+	console.log('got here')
+
+
+    const x = 0, y = 0;
+    const heartShape = new THREE.Shape();
+
+    heartShape.moveTo( x + 5, y + 5 );
+    heartShape.bezierCurveTo( x + 5, y + 5, x + 4, y, x, y );
+    heartShape.bezierCurveTo( x - 6, y, x - 6, y + 7,x - 6, y + 7 );
+    heartShape.bezierCurveTo( x - 6, y + 11, x - 3, y + 15.4, x + 5, y + 19 );
+    heartShape.bezierCurveTo( x + 12, y + 15.4, x + 16, y + 11, x + 16, y + 7 );
+    heartShape.bezierCurveTo( x + 16, y + 7, x + 16, y, x + 10, y );
+    heartShape.bezierCurveTo( x + 7, y, x + 5, y + 5, x + 5, y + 5 );
+
+    const geometry = new THREE.ShapeGeometry( heartShape );
+    const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+	const heart = new THREE.Mesh( geometry, material );
+	heart.material.side = THREE.DoubleSide;
+
+	heart.rotateX(Math.PI/2);
+	heart.rotateZ(Math.PI);
+	let i = lives.length;
+	heart.position.x = 5* i - 5;
+	heart.position.y= 39;
+	heart.position.z = 4;
+	heart.scale.set(.2,.2,.2);
+	lives.push(heart);
+	livesGroup.add(heart);
+
+}
 // Update player AABB position in the movePlayer function
 let isJumping = false;
 const gravity = -.01;
@@ -872,10 +904,10 @@ function createCube(){
 
 function giveReward(){
     //const i = Math.floor(Math.random() * (3 - 1 + 1)) + 1;
-    let i = 3;
+    let i = 1;
     switch (i){
 	case 1:
-	    // add life
+	    addLife();
 	    break;
 	case 2:
 	    // make invisible
