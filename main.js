@@ -6,6 +6,9 @@ let cube_exists = 0;
 let gameStarted = false;
 let gameEnded = false;
 let mouseMode = false;
+let invincible = 0;
+let cubeToggle = 0;
+let demoMode = 0;
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -30,6 +33,8 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 //test comment
 
@@ -43,7 +48,7 @@ camera.position.set(-90, 10, 10 );
 
 
 // Orbit Controls (for testing)
-const controls = new OrbitControls(camera, renderer.domElement);
+// const controls = new OrbitControls(camera, renderer.domElement);
 
 
 
@@ -82,8 +87,8 @@ class Figure {
 
 	const bodyTexture = new THREE.TextureLoader().load('fit4.png'); // Load your texture
 
-// // Configure the material with the texture
-// const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
+	// // Configure the material with the texture
+	// const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
 	this.bodyMaterial = new THREE.MeshStandardMaterial({ map: bodyTexture });
 
 
@@ -103,12 +108,13 @@ class Figure {
 	//this.createLives();
     }
 
-	
+
 
     createBody() {
 	this.body = new THREE.Group();
 	const geometry = new THREE.CylinderGeometry(.5, .5, 1.8, 10);
 	const bodyMain = new THREE.Mesh(geometry, this.bodyMaterial);
+	bodyMain.castShadow = true;
 	this.body.rotateY(degreesToRadians(180));
 	this.body.add(bodyMain);
 	this.group.add(this.body);
@@ -118,13 +124,14 @@ class Figure {
 	this.head = new THREE.Group();
 	const geometry = new THREE.SphereGeometry(.8, 10, 10);
 	const headMain = new THREE.Mesh(geometry, this.headMaterial);
+	headMain.castShadow = true;
 	this.head.add(headMain);
 	this.group.add(this.head);
 	this.head.position.y = 1.65;
 	this.createEyes();
     }
- 
-	
+
+
     createEyes() {
 	const eyes = new THREE.Group();
 	const geometry = new THREE.SphereGeometry(0.15, 12, 8);
@@ -149,6 +156,7 @@ class Figure {
 	    const armGroup = new THREE.Group();
 	    const geometry = new THREE.BoxGeometry(0.25, height, 0.25);
 	    const arm = new THREE.Mesh(geometry, this.headMaterial);
+	    arm.castShadow = true;
 	    const m = i % 2 === 0 ? 1 : -1;
 
 	    armGroup.add(arm);
@@ -167,6 +175,7 @@ class Figure {
 
 	for(let i = 0; i < 2; i++) {
 	    const leg = new THREE.Mesh(geometry, this.legMaterial);
+	    leg.castShadow = true;
 	    const m = i % 2 === 0 ? 1 : -1;
 	    const legGroup = new THREE.Group();
 	    legGroup.add(leg);
@@ -176,37 +185,47 @@ class Figure {
 	    this.legs.push(legGroup);
 	}
 
-	
+
     }
-	createHair() {
-		const hairGroup = new THREE.Group(); // Create a group to hold the hair
-	
-		// Define the geometry and material for the hair
-		 // Small rectangle dimensions
-		const hairMaterial = new THREE.MeshPhongMaterial({ color: 0x2c1d0a }); // Brown hair color
-	
-		for (let i = 0; i < 100; i++) {
-			let hairGeometry = new THREE.BoxGeometry(0.1, 0.3 + Math.random() * .3 , .1);
-			const hairStrand = new THREE.Mesh(hairGeometry, hairMaterial);
-			
-	
-			// Randomize the position of the hair strands
-			const offsetX = (Math.random() - 0.5) * 1.2; // Random X position within a range
-			const offsetY = -.1; // Position slightly above the head
-			const offsetZ = (Math.random() - 0.5) * 1.2; // Random Z position within a range
-			
-			hairStrand.rotation.x = degreesToRadians((Math.random() - 0.5) * 30);
-			hairStrand.rotation.y = degreesToRadians((Math.random() - 0.5) * 180);
-			hairStrand.rotation.z = degreesToRadians((Math.random() - 0.5) * 180);
-			hairStrand.position.set(offsetX, offsetY, offsetZ);
-			hairGroup.add(hairStrand); // Add each strand to the hair group
-		}
-	
-		// Attach the hair group to the head
-		this.head.add(hairGroup);
-		hairGroup.position.y = 0.8; // Position the hair group on top of the head
+    createHair() {
+	const hairGroup = new THREE.Group(); // Create a group to hold the hair
+
+	// Define the geometry and material for the hair
+	// Small rectangle dimensions
+	const hairMaterial = new THREE.MeshPhongMaterial({ color: 0x2c1d0a }); // Brown hair color
+
+	for (let i = 0; i < 100; i++) {
+	    let hairGeometry = new THREE.BoxGeometry(0.1, 0.3 + Math.random() * .3 , .1);
+	    const hairStrand = new THREE.Mesh(hairGeometry, hairMaterial);
+
+
+	    // Randomize the position of the hair strands
+	    const offsetX = (Math.random() - 0.5) * 1.2; // Random X position within a range
+	    const offsetY = -.1; // Position slightly above the head
+	    const offsetZ = (Math.random() - 0.5) * 1.2; // Random Z position within a range
+
+	    hairStrand.rotation.x = degreesToRadians((Math.random() - 0.5) * 30);
+	    hairStrand.rotation.y = degreesToRadians((Math.random() - 0.5) * 180);
+	    hairStrand.rotation.z = degreesToRadians((Math.random() - 0.5) * 180);
+	    hairStrand.position.set(offsetX, offsetY, offsetZ);
+	    hairGroup.add(hairStrand); // Add each strand to the hair group
 	}
-	
+
+	// Attach the hair group to the head
+	this.head.add(hairGroup);
+	hairGroup.position.y = 0.8; // Position the hair group on top of the head
+    }
+
+    bigHair(){
+	const hairGroup = this.head.children[2];
+	hairGroup.scale.set(1.5,1.5,1.5);
+    }
+
+
+    smallHair(){
+	const hairGroup = this.head.children[2];
+	hairGroup.scale.set(1,1,1);
+    }
 
     crouch() {
 	if (this.crouching) return; // Avoid reapplying the crouch pose if already crouched
@@ -504,7 +523,7 @@ window.addEventListener('click', onMouseClick, false);
 let mouseLock = false;
 
 function onMouseClick(event) {
-	console.log(camera.position);
+    console.log(camera.position);
     mouseLock = true;
     // Convert screen coordinates to normalized device coordinates (NDC)
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -518,10 +537,10 @@ function onMouseClick(event) {
     const intersects = raycaster.intersectObject(floor);
 
     if (intersects.length > 0) {
-        const point = intersects[0].point; // The exact point of intersection
-        console.log(`Clicked position on floor: X=${point.x}, Y=${point.y}`);
-		clickx = point.x;
-		clicky = point.y;
+	const point = intersects[0].point; // The exact point of intersection
+	console.log(`Clicked position on floor: X=${point.x}, Y=${point.y}`);
+	clickx = point.x;
+	clicky = point.y;
 
     }
 }
@@ -555,7 +574,7 @@ window.addEventListener('keydown', (event) => {
 	keys.Shift = true;
     }
 
-	
+
 });
 
 window.addEventListener('keyup', (event) => {
@@ -563,11 +582,15 @@ window.addEventListener('keyup', (event) => {
     if (event.key === 's' || event.key === 'S') keys.S = false;
     if (event.key === 'a' || event.key === 'A') keys.A = false;
     if (event.key === 'd' || event.key === 'D') keys.D = false;
-	if (event.key === 'r' || event.key === 'R') startGame();
-	if (event.key === 't' || event.key === 'T') {
-		mouseMode = true;
-		startGame();
-	}
+    if (event.key === 'r' || event.key === 'R') startGame();
+    if (event.key === 't' || event.key === 'T') {
+	mouseMode = true;
+	startGame();
+    }
+    if (event.key === 'g' || event.key === 'G') {
+	demoMode = true;
+	startGame();
+    }
     if (event.code === 'Space') keys.Space = false;
     if (event.code === 'Shift') keys.Shift = false;
 });
@@ -598,7 +621,8 @@ function createLives(){
 
     const geometry = new THREE.ShapeGeometry( heartShape );
     const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-    for(let i = 0; i < 3; i++) {
+    let num_lives = demoMode ? 99 : 3;
+    for(let i = 0; i < num_lives; i++) {
 	const heart = new THREE.Mesh( geometry, material );
 	heart.material.side = THREE.DoubleSide;
 
@@ -616,7 +640,7 @@ function createLives(){
 }
 
 function addLife(){
-	console.log('got here')
+    console.log('got here')
 
 
     const x = 0, y = 0;
@@ -632,18 +656,18 @@ function addLife(){
 
     const geometry = new THREE.ShapeGeometry( heartShape );
     const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-	const heart = new THREE.Mesh( geometry, material );
-	heart.material.side = THREE.DoubleSide;
+    const heart = new THREE.Mesh( geometry, material );
+    heart.material.side = THREE.DoubleSide;
 
-	heart.rotateX(Math.PI/2);
-	heart.rotateZ(Math.PI);
-	let i = lives.length;
-	heart.position.x = 5* i - 5;
-	heart.position.y= 39;
-	heart.position.z = 4;
-	heart.scale.set(.2,.2,.2);
-	lives.push(heart);
-	livesGroup.add(heart);
+    heart.rotateX(Math.PI/2);
+    heart.rotateZ(Math.PI);
+    let i = lives.length;
+    heart.position.x = 5* i - 5;
+    heart.position.y= 39;
+    heart.position.z = 4;
+    heart.scale.set(.2,.2,.2);
+    lives.push(heart);
+    livesGroup.add(heart);
 
 }
 
@@ -653,21 +677,21 @@ let isJumping = false;
 const gravity = -.01;
 
 function movePlayer() {
-	if(!mouseMode){
-		if (keys.W) velocity.y = 0.1;
-		if (keys.S) velocity.y = -0.1;
-		if (keys.A) velocity.x = -0.1;
-		if (keys.D) velocity.x = 0.1;
-	}
-    
+    if(!mouseMode){
+	if (keys.W) velocity.y = 0.2;
+	if (keys.S) velocity.y = -0.2;
+	if (keys.A) velocity.x = -0.2;
+	if (keys.D) velocity.x = 0.2;
+    }
+
 
     if (mouseMode) {
 	let tol = 0.2;
 	//let dy = clicky - player.group.position.y;
 	//let dx = clickx - player.group.position.x;
-	velocity.y = (clicky - player.group.position.y)/20;
-	velocity.x = (clickx - player.group.position.x)/20;
-	
+	velocity.y = (clicky - player.group.position.y)/40;
+	velocity.x = (clickx - player.group.position.x)/40;
+
 	//console.log(player.group.position.x)
 	//console.log(player.group.position.y)
 	// if (dx**2 + dy**2 > tol){
@@ -677,18 +701,18 @@ function movePlayer() {
 	// }
     }
 
-	if(player.group.position.x > 39 && velocity.x > 0){
-		velocity.x = 0
-	}
-	if(player.group.position.y > 39 && velocity.y > 0){
-		velocity.y = 0
-	}
-	if(player.group.position.x < -39 && velocity.x < 0){
-		velocity.x = 0
-	}
-	if(player.group.position.y < -33 && velocity.y < 0){
-		velocity.y = 0
-	}
+    if(player.group.position.x > 39 && velocity.x > 0){
+	velocity.x = 0
+    }
+    if(player.group.position.y > 39 && velocity.y > 0){
+	velocity.y = 0
+    }
+    if(player.group.position.x < -39 && velocity.x < 0){
+	velocity.x = 0
+    }
+    if(player.group.position.y < -32 && velocity.y < 0){
+	velocity.y = 0
+    }
 
     if (keys.Space && !isJumping) {
 	isJumping = true;
@@ -700,8 +724,8 @@ function movePlayer() {
     if (keys.Shift && !isJumping) {
 	player.crouch();
 	player.stop = true;
-	velocity.x = 0;
-	velocity.y = 0;	
+	velocity.x = velocity.x * 0.5;
+	velocity.y = velocity.y * 0.5;	
 	console.log(player.group.position.x);
 	console.log(player.group.position.y);
 	console.log(camera.position);
@@ -756,7 +780,7 @@ let clock = new THREE.Clock();
 const lasers = [];
 const laserGroup = new THREE.Group();
 scene.add(laserGroup);
-let last_collision = clock.getElapsedTime();
+let last_collision = 0;
 
 function getHeight() {
     var i = true;
@@ -769,6 +793,22 @@ function getHeight() {
     }
 }
 
+const sweeperGeometry = new THREE.BoxGeometry(0.1, 100, 0.1);
+const sweeperMaterial = new THREE.MeshBasicMaterial({ color: 0xffA500 });
+const sweeper = new THREE.Mesh(sweeperGeometry, sweeperMaterial);
+
+let sweeperActive = false; // Flag to control the sweeper's movement
+let sweeperDirection = 1; // 1 for right, -1 for left
+let sweeperSpeed = 0.1; // Speed of sweeper
+const sweeperBoundary = 40; // X-axis boundary for the sweeper
+
+function sweep() {
+    if (!scene.children.includes(sweeper)) {
+        sweeper.position.set(-sweeperBoundary, 0, 0); // Reset the sweeper's position
+        scene.add(sweeper); // Add the sweeper to the scene
+    }
+    sweeperActive = true; // Activate the sweeper
+}
 
 // Laser Creation Function
 function createLaser() {
@@ -784,10 +824,11 @@ function createLaser() {
     laser.dim = true; // Initial state
     laser.material.color.set(0x440000); // Dim color
 
-    const numLights = 1; // Number of lights along the laser
+    let n_lasers = 2+level/5;
+    const numLights = 12/n_lasers; // Number of lights along the laser
     for (let i = 0; i < numLights; i++) {
 	const lightPosition = (i - numLights / 2) * (laserGeometry.parameters.width / numLights);
-	const laserLight = new THREE.PointLight(0xff0000, 0.5, 5); // Light color, intensity, range
+	const laserLight = new THREE.PointLight(0xff0000, 5, 20); // Light color, intensity, range
 	laserLight.position.set(lightPosition, 0, 0); // Position along laser length
 	laser.add(laserLight);
     }
@@ -815,23 +856,34 @@ function clearLasers() {
 let last_laser = clock.getElapsedTime();
 
 let cube = null;
+const cube_light = new THREE.PointLight(0xffffff, 6, 12);
+cube_light.castShadow = true;
+cube_light.receiveShadow = true;
 // Create New Lasers Every Few Seconds
 setInterval(() => {
-	if(gameStarted && !gameEnded){
-		level+=1;
-		clearLasers();
-		let num_lasers = 2+level/5;
-		for (let i = 0; i < num_lasers; i++) {
-		createLaser();
-		last_laser = clock.getElapsedTime();
-		}
+    if(gameStarted && !gameEnded){
+	level+=1;
+	sweeperSpeed = Math.min(1, level * 0.1 - 0.2);
+	clearLasers();
+	let num_lasers = 2+level/5;
+	for (let i = 0; i < num_lasers; i++) {
+	    createLaser();
+	    last_laser = clock.getElapsedTime();
+	}
 
-		if (!cube_exists && level % 3 === 0){
-			cube = createCube();
-			scene.add(cube);
-		}
-	} 
-	
+	if (!cube_exists && level % 3 === 1){
+	    cube = createCube();
+	    scene.add(cube);
+	    cube_light.position.copy(cube.position);
+	    cube_light.position.z = 2.1;
+	    scene.add(cube_light);
+	}
+
+	if (level == 3){
+	    sweep();
+	}
+    } 
+
     //console.log(camera.position)
 }, 3000);
 
@@ -847,7 +899,7 @@ function updateLasers() {
 
 
 	// Check Collision
-	if(laser.dim == false && clock.getElapsedTime() - last_collision > 3){
+	if(laser.dim == false && clock.getElapsedTime() - last_collision > 1){
 	    if (playerOBB.intersects(laserOBB)) {
 		//laserOBB.display(scene);
 		//console.log("Collision detected!");
@@ -865,33 +917,84 @@ function updateLasers() {
 function createCube(){
     cube_exists = 1;
     const geometry = new THREE.BoxGeometry(1, 1, 1); 
-    const material = new THREE.MeshBasicMaterial({ color: 0x0000FF }); 
+    const cubeTexture = new THREE.TextureLoader().load('earth.gif');
+    cubeTexture.wrapS = THREE.RepeatWrapping; // Horizontal wrapping
+    cubeTexture.wrapT = THREE.RepeatWrapping; // Vertical wrapping
+    const material = new THREE.MeshStandardMaterial({ map: cubeTexture }); 
     const cube = new THREE.Mesh(geometry, material); 
-    cube.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, 0);
+    cube.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, 0.1);
+    cube.receiveShadow = true;
+
+    // Add scrolling effect to the texture
+    cube.updateTexture = function () {
+        cubeTexture.offset.x += 0.01; // Adjust speed of horizontal scroll
+        //cubeTexture.offset.y += 0.005; // Adjust speed of vertical scroll
+    };
+
+    // Add wobbling effect to the cube's Y position
+    cube.wobble = function (elapsedTime) {
+        cube.position.z += Math.sin(elapsedTime * 5) * 0.05; // Adjust speed and height
+    };
+
     return cube;
 }
 
 function giveReward(){
-    //const i = Math.floor(Math.random() * (3 - 1 + 1)) + 1;
-    let i = 1;
-    switch (i){
-	case 1:
+    switch (cubeToggle){
+	case 0:
 	    addLife();
+	    pulseLight(500, lifeLight);
+	    cubeToggle = 1;
 	    break;
-	case 2:
-	    // make invisible
-	    break;
-	case 3:
+	case 1:
+	    invincible = 1;
+	    player.bigHair();
+	    setTimeout(() => {
+		invincible = 0;
+		player.smallHair();
+	    }, 5000);
+	    pulseLight(5000, invLight);
+	    cubeToggle = 0;
 	    break;
     }
 }
 
+const damageLight = new THREE.AmbientLight(0xff0000, 0);
+scene.add(damageLight);
 
+const invLight = new THREE.AmbientLight(0x0000ff, 0);
+scene.add(invLight);
 
+const lifeLight = new THREE.AmbientLight(0x00ff00, 0);
+scene.add(lifeLight);
 
+// Function to pulse the light
+function pulseLight(duration, light) {
+    const startTime = performance.now();
+
+    function animatePulse() {
+        const elapsedTime = performance.now() - startTime;
+
+        // Calculate intensity (0 to 1) based on elapsed time
+        const intensity = Math.sin((elapsedTime / duration) * Math.PI);
+        light.intensity = intensity;
+
+        if (elapsedTime < duration) {
+            requestAnimationFrame(animatePulse); // Continue animation
+        } else {
+            light.intensity = 0; // Reset intensity to 0 after pulsing
+        }
+    }
+
+    animatePulse();
+}
 
 function takeDamage(){
-    if(lives.length){
+    if (invincible){
+	return;
+    }
+    if (lives.length){
+	pulseLight(500, damageLight);
 	let life = lives.pop();
 	livesGroup.remove(life); // Remove each laser from the laser group
 	life.geometry.dispose();  // Dispose of laser geometry
@@ -906,7 +1009,7 @@ function takeDamage(){
 
 function displayGameOverScreen() {
 
-	gameEnded = true;
+    gameEnded = true;
     const loader = new FontLoader();
 
     // Load the font
@@ -921,7 +1024,7 @@ function displayGameOverScreen() {
 	const gameOverText = new TextGeometry(gameOverMessage, {
 	    font: font, 
 	    size: 2,  
-	    height: 0.1, 
+	    depth: 0.1, 
 	    curveSegments: 12, 
 	    bevelEnabled: true,
 	    bevelThickness: 0.02,
@@ -933,7 +1036,7 @@ function displayGameOverScreen() {
 	const survivedText = new TextGeometry(survivedMessage, {
 	    font: font,
 	    size: 0.8,
-	    height: 0.1,
+	    depth: 0.1,
 	    curveSegments: 12,
 	    bevelEnabled: true,
 	    bevelThickness: 0.02,
@@ -961,16 +1064,16 @@ function displayStartScreen() {
     // Load the font
     loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
 	// Clear the scene or hide current game elements
-    // You might still need to manually clear objects if `.clear()` isn't sufficient.
+	// You might still need to manually clear objects if `.clear()` isn't sufficient.
 
 	// Create a "Game Over" message 
 	let time = Math.floor(clock.getElapsedTime());
 	const gameOverMessage = "Welcome to Laser Maze";
-	const survivedMessage = `The goal is to survive, press r for keyboard and t for mouse`;
+	const survivedMessage = `The goal is to survive, press r for keyboard and t for mouse,\ng for demo mode`;
 	const gameOverText = new TextGeometry(gameOverMessage, {
 	    font: font, 
 	    size: 2,  
-	    height: 0.1, 
+	    depth: 0.1, 
 	    curveSegments: 12, 
 	    bevelEnabled: true,
 	    bevelThickness: 0.02,
@@ -982,7 +1085,7 @@ function displayStartScreen() {
 	const survivedText = new TextGeometry(survivedMessage, {
 	    font: font,
 	    size: 0.8,
-	    height: 0.1,
+	    depth: 0.1,
 	    curveSegments: 12,
 	    bevelEnabled: true,
 	    bevelThickness: 0.02,
@@ -1049,7 +1152,7 @@ const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 
 // Rotate the floor to lie on the XZ plane
 //floor.rotation.x = -Math.PI / 2; // Rotate 90 degrees to align with XZ
-floor.position.z = -2; // Place it at y=0
+floor.position.z = -1.9; // Place it at y=0
 
 // Optionally, receive shadows for realism
 floor.receiveShadow = true;
@@ -1094,57 +1197,75 @@ wall4.receiveShadow = true;
 
 
 function startGame(){
-	if(!gameStarted){
-		scene.add(wall1);
-		scene.add(wall2);
-		scene.add(wall3);
-		scene.add(wall4);
-		scene.add(floor);
-		createLives();
-		const lightAmbient = new THREE.AmbientLight(0x808080, 0.2)
-		scene.add(lightAmbient)
-		gameStarted = true;
-		camera.position.set(0, -17, 6 );
-		camera.lookAt(0,0,0);
-	}
-	
-}
+    if(!gameStarted){
+	scene.add(wall1);
+	scene.add(wall2);
+	scene.add(wall3);
+	scene.add(wall4);
+	scene.add(floor);
+	createLives();
+	const lightAmbient = new THREE.AmbientLight(0x808080, 0.3)
+	scene.add(lightAmbient)
+	gameStarted = true;
+	camera.position.set(0, -17, 6 );
+	camera.lookAt(0,0,0);
+    }
 
+}
 
 // Animation Loop
 function animate() {
-	requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
     let time = clock.getElapsedTime();
 
-	if(gameStarted && !gameEnded){
+    if(gameStarted && !gameEnded){
 
-		if(!mouseMode){
-			camera.position.set(player.group.position.x, player.group.position.y - 7, player.group.position.z + 4);
-			camera.lookAt(player.group.position); 
-		}
-		
-	
-	
-
-    
-    playerOBB.update();
-    movePlayer();
-    updateLasers();
-    if((time - last_laser) > 1){
-	lasers.forEach((laser, index) => {
-	    laser.dim = false;
-	    laser.material.color.set(0xff0000);
-	});
-    }
-	if (cube_exists) {
-		if (Math.abs(cube.position.x - player.group.position.x) <= 1 && Math.abs(cube.position.y - player.group.position.y) <= 1){
-			scene.remove(cube);
-			cube_exists = 0;
-			giveReward();
-		}
-		}
-
+	if(!mouseMode){
+	    camera.position.set(player.group.position.x, player.group.position.y - 7, player.group.position.z + 4);
+	    camera.lookAt(player.group.position); 
 	}
+
+	playerOBB.update();
+	movePlayer();
+	updateLasers();
+	if((time - last_laser) > 1){
+	    lasers.forEach((laser, index) => {
+		laser.dim = false;
+		laser.material.color.set(0xff0000);
+	    });
+	}
+
+	if (cube_exists){
+	    cube.updateTexture();
+
+	    const elapsedTime = performance.now() / 1000; // Get time in seconds
+	    cube.wobble(elapsedTime);
+
+	    if (Math.abs(cube.position.x - player.group.position.x) <= 1 && Math.abs(cube.position.y - player.group.position.y) <= 1){
+		scene.remove(cube);
+		scene.remove(cube_light);
+		cube_exists = 0;
+		giveReward();
+	    }
+	}
+
+        // Sweeper Movement
+        if (sweeperActive) {
+            sweeper.position.x += sweeperSpeed * sweeperDirection;
+
+            // Reverse direction if sweeper hits the boundary
+            if (sweeper.position.x >= sweeperBoundary || sweeper.position.x <= -sweeperBoundary) {
+                sweeperDirection *= -1; // Reverse direction
+            }
+
+            // Collision Detection with Player
+            if (Math.abs(sweeper.position.x - player.group.position.x) < 1 && player.group.position.z < 1 && time - last_collision > 1) {
+                takeDamage();
+		last_collision = elapsed_time;
+            }
+        }
+
+    }
 
     player.animateRun(time);
     //updateAABBHelper();
