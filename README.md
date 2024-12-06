@@ -1,14 +1,14 @@
-Laser Maze
+***Laser Maze***
 
 Play as Niklas "Broccoli" Ellegaard in this illuminating adventure across space and time.
 
-Build
+**Build**
 
 ```bash
 npm i
 ```
 
-Run
+**Run**
 
 ```bash
 npx vite
