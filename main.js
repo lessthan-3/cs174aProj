@@ -1,6 +1,8 @@
 // Global Variables
 
 let global_crouching = false;
+let level = 0;
+let cube_exists = 0;
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -813,13 +815,22 @@ function clearLasers() {
 
 
 let last_laser = clock.getElapsedTime();
+
+let cube = null;
 // Create New Lasers Every Few Seconds
 setInterval(() => {
+	level+=1;
     clearLasers();
-    for (let i = 0; i < 5; i++) {
+    let num_lasers = 2+level/5;
+    for (let i = 0; i < num_lasers; i++) {
 	createLaser();
 	last_laser = clock.getElapsedTime();
     }
+
+	if (!cube_exists && level % 3 === 0){
+		cube = createCube();
+		scene.add(cube);
+	}
     //console.log(camera.position)
 }, 3000);
 
@@ -847,6 +858,31 @@ function updateLasers() {
 
 
     });
+}
+
+
+function createCube(){
+    cube_exists = 1;
+    const geometry = new THREE.BoxGeometry(1, 1, 1); 
+    const material = new THREE.MeshBasicMaterial({ color: 0x0000FF }); 
+    const cube = new THREE.Mesh(geometry, material); 
+    cube.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, 0);
+    return cube;
+}
+
+function giveReward(){
+    //const i = Math.floor(Math.random() * (3 - 1 + 1)) + 1;
+    let i = 3;
+    switch (i){
+	case 1:
+	    // add life
+	    break;
+	case 2:
+	    // make invisible
+	    break;
+	case 3:
+	    break;
+    }
 }
 
 
@@ -1016,6 +1052,16 @@ function animate() {
 	    laser.material.color.set(0xff0000);
 	});
     }
+	if (cube_exists) {
+		if (Math.abs(cube.position.x - player.group.position.x) <= 1 && Math.abs(cube.position.y - player.group.position.y) <= 1){
+			scene.remove(cube);
+			cube_exists = 0;
+			giveReward();
+		}
+		}
+
+
+
     player.animateRun(time);
     //updateAABBHelper();
     playerOBB.update();
