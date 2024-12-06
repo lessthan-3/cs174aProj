@@ -858,7 +858,6 @@ let last_laser = clock.getElapsedTime();
 let cube = null;
 const cube_light = new THREE.PointLight(0xffffff, 6, 12);
 cube_light.castShadow = true;
-cube_light.receiveShadow = true;
 // Create New Lasers Every Few Seconds
 setInterval(() => {
     if(gameStarted && !gameEnded){
@@ -923,7 +922,7 @@ function createCube(){
     const material = new THREE.MeshStandardMaterial({ map: cubeTexture }); 
     const cube = new THREE.Mesh(geometry, material); 
     cube.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, 0.1);
-    cube.receiveShadow = true;
+    cube.castShadow = true;
 
     // Add scrolling effect to the texture
     cube.updateTexture = function () {
