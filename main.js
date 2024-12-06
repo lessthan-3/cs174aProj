@@ -16,30 +16,15 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 
-// Scene, Camera, Renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-// const aspectRatio = window.innerWidth / window.innerHeight;
-// const zoom = 30; // Adjust zoom factor to control visible area
-// const frustumSize = zoom;
 
-// const camera = new THREE.OrthographicCamera(
-//     frustumSize * aspectRatio / -2, // left
-//     frustumSize * aspectRatio / 2,  // right
-//     frustumSize / 2,                // top
-//     frustumSize / -2,               // bottom
-//     0.1,                            // near
-//     1000                            // far
-// );
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-//test comment
-
-// Camera Position
 camera.position.set(-90, 10, 10 );
 
 
@@ -48,174 +33,144 @@ camera.position.set(-90, 10, 10 );
 
 
 
-// Orbit Controls (for testing)
-// const controls = new OrbitControls(camera, renderer.domElement);
 
 
 
 
-
-
-
-const degreesToRadians = (degrees) => {
+function degRot(degrees){
     return degrees * (Math.PI / 180)
 }
 
 
-// Player Character (Figure)
-class Figure {
-    constructor(params) {	
-	this.params = {
-	    x: 0,
-	    y: 0,
-	    z: 0,
-	    ry: 0,
-	    ...params
-	};
+class PlayerModel {
+    constructor() {	
 
-	// Create group and add to scene
 	this.group = new THREE.Group();
 	scene.add(this.group);
 
-	// Set initial position and scale
-	this.group.position.set(this.params.x, this.params.y, this.params.z);
+	this.group.position.set(0, 0, 0);
 	this.group.scale.set(1, 1, 1);
 	this.group.rotation.set(Math.PI /2, 0 ,0 );
-
-	// Material
-	this.headMaterial = new THREE.MeshPhongMaterial({ color: 0xffdbac});
+	
 	this.legMaterial = new THREE.MeshPhongMaterial({color: 0x000000});
+	
 
-	const bodyTexture = new THREE.TextureLoader().load('fit4.png'); // Load your texture
-
-	// // Configure the material with the texture
-	// const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
+	//body
+	const bodyTexture = new THREE.TextureLoader().load('fit4.png'); 
 	this.bodyMaterial = new THREE.MeshStandardMaterial({ map: bodyTexture });
+	this.body = new THREE.Group();
+	const geometryBody = new THREE.CylinderGeometry(.5, .5, 1.8, 10);
+	const bodyMain = new THREE.Mesh(geometryBody, this.bodyMaterial);
+	bodyMain.castShadow = true;
+	this.body.rotateY(degRot(180));
+	this.body.add(bodyMain);
+	this.group.add(this.body);
+	
+
+	//head
+	this.headMaterial = new THREE.MeshPhongMaterial({ color: 0xffdbac});
+	this.head = new THREE.Group();
+	const geometryHead = new THREE.SphereGeometry(.8, 10, 10);
+	const headMain = new THREE.Mesh(geometryHead, this.headMaterial);
+	headMain.castShadow = true;
+	this.head.add(headMain);
+	this.group.add(this.head);
+	this.head.position.y = 1.5;
+
+	//eyes
+
+	const eyes = new THREE.Group();
+	const geometryEye = new THREE.SphereGeometry(0.15, 10, 10);
+	const material = new THREE.MeshPhongMaterial({ color: 0x44445c });
+	const eye1 = new THREE.Mesh(geometryEye, material);
+	const eye2 = new THREE.Mesh(geometryEye, material);
+	eyes.add(eye1);
+	eyes.add(eye2);
+	
+	eye1.position.set(-.4, -0.1, 0.6);
+	eye2.position.set(.4, -0.1, 0.6);
+	this.head.add(eyes);
+	
+
+	//arms
+	this.arms = [];
+	this.armMaterial = new THREE.MeshPhongMaterial({ color: 0xffdbac});
+
+	
+	const geometryArm = new THREE.BoxGeometry(0.2, 2, 0.2);
+	const arm1 = new THREE.Mesh(geometryArm, this.armMaterial);
+	arm1.castShadow = true;
+
+	this.body.add(arm1);
+
+	arm1.position.y = -0.5;
+	arm1.position.set(-.3, 0.6, 0);
+	arm1.rotation.z = degRot(-30);
+
+	const arm2 = new THREE.Mesh(geometryArm, this.armMaterial);
+	arm2.castShadow = true;
+
+	this.body.add(arm2);
+
+	arm2.position.y = -0.5;
+	arm2.position.set(.3, 0.6, 0);
+	arm2.rotation.z = degRot(30);
 
 
+	this.arms.push(arm1);
+	this.arms.push(arm2);
 
-	this.init(); // Initialize the player parts
+	//legs
+	this.legs = [];
+	const geometryLeg = new THREE.BoxGeometry(0.2, 1, 0.2);
+
+
+	const leg1 = new THREE.Mesh(geometryLeg, this.legMaterial);
+	leg1.castShadow = true;
+	
+	leg1.position.y = -0.2;
+	leg1.position.set(-0.2, -1.15, 0);
+	this.body.add(leg1);
+	this.legs.push(leg1);
+
+	const leg2 = new THREE.Mesh(geometryLeg, this.legMaterial);
+	leg2.castShadow = true;
+	
+	leg2.position.y = -0.2;
+	leg2.position.set(0.2, -1.15, 0);
+	this.body.add(leg2);
+	this.legs.push(leg2);
+
+	//hair
+
+	const hairGroup = new THREE.Group(); 
+
+	const hairMaterial = new THREE.MeshPhongMaterial({ color: 0x2c1d0a });
+
+	for (let i = 0; i < 100; i++) {
+	    let hairGeometry = new THREE.BoxGeometry(0.1, 0.3 + Math.random() * .3 , .1);
+	    const hairStrand = new THREE.Mesh(hairGeometry, hairMaterial);
+	    const offsetX = (Math.random() - 0.5) * 1.2; 
+	    const offsetY = -.1;
+	    const offsetZ = (Math.random() - 0.5) * 1.2; 
+
+	    hairStrand.rotation.x = degRot((Math.random() - 0.5) * 30);
+	    hairStrand.rotation.y = degRot((Math.random() - 0.5) * 180);
+	    hairStrand.rotation.z = degRot((Math.random() - 0.5) * 180);
+	    hairStrand.position.set(offsetX, offsetY, offsetZ);
+	    hairGroup.add(hairStrand); 
+	}
+
+	this.head.add(hairGroup);
+	hairGroup.position.y = 0.8; 
+
 
 	this.crouching = false;
 	this.stop = true;
     }
 
-    init() {
-	this.createBody();
-	this.createHead();
-	this.createArms();
-	this.createLegs();
-	this.createHair();
-	//this.createLives();
-    }
 
-
-
-    createBody() {
-	this.body = new THREE.Group();
-	const geometry = new THREE.CylinderGeometry(.5, .5, 1.8, 10);
-	const bodyMain = new THREE.Mesh(geometry, this.bodyMaterial);
-	bodyMain.castShadow = true;
-	this.body.rotateY(degreesToRadians(180));
-	this.body.add(bodyMain);
-	this.group.add(this.body);
-    }
-
-    createHead() {
-	this.head = new THREE.Group();
-	const geometry = new THREE.SphereGeometry(.8, 10, 10);
-	const headMain = new THREE.Mesh(geometry, this.headMaterial);
-	headMain.castShadow = true;
-	this.head.add(headMain);
-	this.group.add(this.head);
-	this.head.position.y = 1.65;
-	this.createEyes();
-    }
-
-
-    createEyes() {
-	const eyes = new THREE.Group();
-	const geometry = new THREE.SphereGeometry(0.15, 12, 8);
-	const material = new THREE.MeshPhongMaterial({ color: 0x44445c });
-
-	for(let i = 0; i < 2; i++) {
-	    const eye = new THREE.Mesh(geometry, material);
-	    const m = i % 2 === 0 ? 1 : -1;
-	    eyes.add(eye);
-	    eye.position.x = 0.36 * m;
-	}
-
-	this.head.add(eyes);
-	eyes.position.set(0, -0.1, 0.7);
-    }
-
-    createArms() {
-	this.arms = [];
-	const height = 1.0;
-
-	for(let i = 0; i < 2; i++) {
-	    const armGroup = new THREE.Group();
-	    const geometry = new THREE.BoxGeometry(0.25, height, 0.25);
-	    const arm = new THREE.Mesh(geometry, this.headMaterial);
-	    arm.castShadow = true;
-	    const m = i % 2 === 0 ? 1 : -1;
-
-	    armGroup.add(arm);
-	    this.body.add(armGroup);
-
-	    arm.position.y = height * -0.5;
-	    armGroup.position.set(m * 0.3, 0.6, 0);
-	    armGroup.rotation.z = degreesToRadians(30 * m);
-	    this.arms.push(armGroup);
-	}
-    }
-
-    createLegs() {
-	this.legs = [];
-	const geometry = new THREE.BoxGeometry(0.25, 0.8, 0.25);
-
-	for(let i = 0; i < 2; i++) {
-	    const leg = new THREE.Mesh(geometry, this.legMaterial);
-	    leg.castShadow = true;
-	    const m = i % 2 === 0 ? 1 : -1;
-	    const legGroup = new THREE.Group();
-	    legGroup.add(leg);
-	    leg.position.y = -0.2;
-	    legGroup.position.set(m * 0.22, -1.15, 0);
-	    this.body.add(legGroup);
-	    this.legs.push(legGroup);
-	}
-
-
-    }
-    createHair() {
-	const hairGroup = new THREE.Group(); // Create a group to hold the hair
-
-	// Define the geometry and material for the hair
-	// Small rectangle dimensions
-	const hairMaterial = new THREE.MeshPhongMaterial({ color: 0x2c1d0a }); // Brown hair color
-
-	for (let i = 0; i < 100; i++) {
-	    let hairGeometry = new THREE.BoxGeometry(0.1, 0.3 + Math.random() * .3 , .1);
-	    const hairStrand = new THREE.Mesh(hairGeometry, hairMaterial);
-
-
-	    // Randomize the position of the hair strands
-	    const offsetX = (Math.random() - 0.5) * 1.2; // Random X position within a range
-	    const offsetY = -.1; // Position slightly above the head
-	    const offsetZ = (Math.random() - 0.5) * 1.2; // Random Z position within a range
-
-	    hairStrand.rotation.x = degreesToRadians((Math.random() - 0.5) * 30);
-	    hairStrand.rotation.y = degreesToRadians((Math.random() - 0.5) * 180);
-	    hairStrand.rotation.z = degreesToRadians((Math.random() - 0.5) * 180);
-	    hairStrand.position.set(offsetX, offsetY, offsetZ);
-	    hairGroup.add(hairStrand); // Add each strand to the hair group
-	}
-
-	// Attach the hair group to the head
-	this.head.add(hairGroup);
-	hairGroup.position.y = 0.8; // Position the hair group on top of the head
-    }
+	
 
     bigHair(){
 	const hairGroup = this.head.children[2];
@@ -229,49 +184,42 @@ class Figure {
     }
 
     crouch() {
-	if (this.crouching) return; // Avoid reapplying the crouch pose if already crouched
+	if (this.crouching) return; 
 
-	// Lower the body
 	this.body.position.y = -0.5;
 
-	// Bend the legs
-	this.legs[0].rotation.x = degreesToRadians(45); // Front leg bends backward
-	this.legs[1].rotation.x = degreesToRadians(-45); // Back leg bends forward
+	this.legs[0].rotation.x = degRot(45); 
+	this.legs[1].rotation.x = degRot(-45); 
 
-	// Optionally adjust the head position
 	this.head.position.y = 1.0;
 
-	this.crouching = true; // Mark the figure as crouching
+	this.crouching = true; 
 	global_crouching = true;
     }
 
     stand() {
-	if (!this.crouching) return; // Avoid resetting if already standing
+	if (!this.crouching) return; 
 
-	// Reset the body position
+
 	this.body.position.y = 0;
 
-	// Reset the legs
-	this.legs[0].rotation.x = 0; // Front leg straight
-	this.legs[1].rotation.x = 0; // Back leg straight
+	this.legs[0].rotation.x = 0; 
+	this.legs[1].rotation.x = 0; 
 
-	// Reset the head position
+
 	this.head.position.y = 1.65;
 
-	this.crouching = false; // Mark the figure as standing
+	this.crouching = false; 
 	global_crouching = false;
     }
 
 
 
 
-    // Run animation - move arms and legs
-
-
     animateRun(elapsedTime) {
 
 	if (!this.stop){
-	    const speed = 5; // Control speed of running animation
+	    const speed = 5; 
 	    const angle = Math.sin(elapsedTime * speed) * 0.5;
 
 	    this.arms[0].rotation.x = angle;
@@ -284,21 +232,8 @@ class Figure {
 
     }
 
-    // Update direction to face movement
     updateDirection(velocity) {
 
-	// if(way == 1){
-	//   this.group.rotation.set(Math.PI /2, Math.PI ,0 );
-	// }
-	// if(way == 2){
-	//   this.group.rotation.set(Math.PI /2, 0 ,0 );
-	// }
-	// if(way == 3){
-	//   this.group.rotation.set(Math.PI /2, -Math.PI/2 ,0 );
-	// }
-	// if(way == 4){
-	//   this.group.rotation.set(Math.PI /2, Math.PI/2 ,0 );
-	// }
 
 	if(velocity.x == 0){
 	    if(velocity.y == 0){
@@ -342,27 +277,23 @@ class Figure {
 
 class OBB {
     constructor(object, fixedSize = null) {
-	this.object = object; // The linked Three.js object
-	this.fixedSize = fixedSize; // Hardset size of the bounding box (optional)
-	this.box = new THREE.Box3(); // The bounding box
-	this.helper = null; // Visualization helper
-	this.corners = []; // Store the corner points for the OBB
-	this.axes = []; // Store the axes for SAT
+	this.object = object; 
+	this.fixedSize = fixedSize; 
+	this.box = new THREE.Box3();
+	this.corners = []; 
+	this.axes = []; 
 
 	if (this.fixedSize) {
-	    // Use the fixed size and set up the box directly
 	    this.initializeFixedSize();
 	} else {
-	    this.update(); // Compute initial OBB based on object
+	    this.update(); 
 	}
     }
 
-    // Initialize the bounding box with a fixed size
     initializeFixedSize() {
 	const size = this.fixedSize.clone();
 	const halfSize = size.multiplyScalar(0.5);
 
-	// Compute the local-space corners based on the fixed size
 	this.corners = [
 	    new THREE.Vector3(-halfSize.x, -halfSize.y, -halfSize.z),
 	    new THREE.Vector3(halfSize.x, -halfSize.y, -halfSize.z),
@@ -374,7 +305,6 @@ class OBB {
 	    new THREE.Vector3(-halfSize.x, halfSize.y, halfSize.z),
 	];
 
-	// Update the world-space axes
 	const rotationMatrix = new THREE.Matrix4().extractRotation(this.object.matrixWorld);
 	this.axes = [
 	    new THREE.Vector3(1, 0, 0).applyMatrix4(rotationMatrix),
@@ -382,34 +312,28 @@ class OBB {
 	    new THREE.Vector3(0, 0, 1).applyMatrix4(rotationMatrix),
 	];
 
-	// Transform the corners into world space
 	this.corners = this.corners.map((corner) => corner.applyMatrix4(this.object.matrixWorld));
     }
 
-    // Update the OBB based on the object's transformation
+
     update() {
 	if (this.fixedSize) {
-	    // Skip recalculating size if it's fixed
 	    this.initializeFixedSize();
 	    return;
 	}
 
 
 
-	// Update the AABB
 	this.box.setFromObject(this.object);
 
-	// Get the box size and center
-	const size = new THREE.Vector3(1, 3.5, 1); // Box size
-	// const center = new THREE.Vector3(0, 0.5, 0); // Box center
-	const center = global_crouching ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(0, 0.5, 0); // Box center
-	// this.box.getSize(size); // Uncomment if using bounding box dimensions
-	// this.box.getCenter(center); // Uncomment if using bounding box center
+	//Workaround to solve issues with sizing since obb only used for player
+	const size = new THREE.Vector3(1, 3.5, 1); 
 
-	// Calculate half-size for dimensions
+	const center = global_crouching ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(0, 0.5, 0);
+
+
 	const halfSize = size.clone().multiplyScalar(0.5);
 
-	// Create the corner points in world space (adjusted by center)
 	this.corners = [
 	    new THREE.Vector3(-halfSize.x, -halfSize.y, -halfSize.z).add(center),
 	    new THREE.Vector3(halfSize.x, -halfSize.y, -halfSize.z).add(center),
@@ -421,12 +345,10 @@ class OBB {
 	    new THREE.Vector3(-halfSize.x, halfSize.y, halfSize.z).add(center),
 	];
 
-	// Transform the corner points into world space
 	this.corners = this.corners.map((corner) => {
 	    return corner.applyMatrix4(this.object.matrixWorld);
 	});
 
-	// Compute the OBB axes in world space
 	const rotationMatrix = new THREE.Matrix4().extractRotation(this.object.matrixWorld);
 	this.axes = [
 	    new THREE.Vector3(1, 0, 0).applyMatrix4(rotationMatrix),
@@ -434,23 +356,16 @@ class OBB {
 	    new THREE.Vector3(0, 0, 1).applyMatrix4(rotationMatrix),
 	];
 
-	// If there's a helper, update its geometry
-	if (this.helper) {
-	    this.helper.geometry.dispose();
-	    this.helper.geometry = this.createBoxGeometry();
-	}
     }
 
-    // Create a wireframe geometry for visualization
     createBoxGeometry() {
 	const geometry = new THREE.BufferGeometry();
 	const vertices = [];
 
-	// Define the edges of the box
 	const edges = [
-	    [0, 1], [1, 2], [2, 3], [3, 0], // Bottom face
-	    [4, 5], [5, 6], [6, 7], [7, 4], // Top face
-	    [0, 4], [1, 5], [2, 6], [3, 7], // Vertical edges
+	    [0, 1], [1, 2], [2, 3], [3, 0], 
+	    [4, 5], [5, 6], [6, 7], [7, 4], 
+	    [0, 4], [1, 5], [2, 6], [3, 7], 
 	];
 
 	edges.forEach(([i, j]) => {
@@ -462,17 +377,7 @@ class OBB {
 	return geometry;
     }
 
-    // Visualize the OBB
-    display(scene, color = 0x00ff00) {
-	if (!this.helper) {
-	    const material = new THREE.LineBasicMaterial({ color });
-	    const geometry = this.createBoxGeometry();
-	    this.helper = new THREE.LineSegments(geometry, material);
-	    scene.add(this.helper);
-	}
-    }
 
-    // Check if this OBB intersects with another OBB
     intersects(other) {
 	const axes = [
 	    ...this.axes,
@@ -489,14 +394,13 @@ class OBB {
 	    const [min2, max2] = other.projectOntoAxis(axis);
 
 	    if (max1 < min2 || max2 < min1) {
-		return false; // Separating axis found
+		return false; 
 	    }
 	}
 
-	return true; // No separating axis found; OBBs intersect
+	return true; 
     }
 
-    // Project the OBB onto an axis
     projectOntoAxis(axis) {
 	const projections = this.corners.map((corner) => corner.dot(axis));
 	return [Math.min(...projections), Math.max(...projections)];
@@ -506,7 +410,7 @@ class OBB {
 
 
 // Initialize the player figure
-const player = new Figure({ x: 0, y: 0, z: 0 });
+const player = new PlayerModel();
 let velocity = new THREE.Vector3();
 const playerSize = new THREE.Vector3(1, 1, 2);
 const playerOBB = new OBB(player.group);
@@ -526,19 +430,16 @@ let mouseLock = false;
 function onMouseClick(event) {
     console.log(camera.position);
     mouseLock = true;
-    // Convert screen coordinates to normalized device coordinates (NDC)
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // Update the raycaster
     raycaster.setFromCamera(mouse, camera);
 
 
-    // Intersect with the floor
     const intersects = raycaster.intersectObject(floor);
 
     if (intersects.length > 0) {
-	const point = intersects[0].point; // The exact point of intersection
+	const point = intersects[0].point; 
 	console.log(`Clicked position on floor: X=${point.x}, Y=${point.y}`);
 	clickx = point.x;
 	clicky = point.y;
@@ -613,7 +514,7 @@ function createLives(){
 
     const x = 0, y = 0;
     const heartShape = new THREE.Shape();
-
+	//from three.js site
     heartShape.moveTo( x + 5, y + 5 );
     heartShape.bezierCurveTo( x + 5, y + 5, x + 4, y, x, y );
     heartShape.bezierCurveTo( x - 6, y, x - 6, y + 7,x - 6, y + 7 );
@@ -674,8 +575,6 @@ function addLife(){
 
 }
 
-
-// Update player AABB position in the movePlayer function
 let isJumping = false;
 const gravity = -.01;
 
@@ -718,7 +617,7 @@ function movePlayer() {
 
     if (keys.Space && !isJumping) {
 	isJumping = true;
-	velocity.z = .3 // Initial upward velocity, tweak this with gravity const for smoother/faster animations
+	velocity.z = .3 
 	//console.log("jump, position at");
 	//console.log(player.group.position);
     }
@@ -749,7 +648,7 @@ function movePlayer() {
     if (isJumping) {
 	velocity.z += gravity;
 	// console.log(velocity);
-	// Check if the player lands back on the ground
+
 	if (player.group.position.z <= 0) {
 	    player.group.position.z = 0;
 	    isJumping = false;
@@ -757,7 +656,6 @@ function movePlayer() {
 	}
     }
 
-    // Reset velocity for next frame
     velocity.set(0, 0, velocity.z);
 
     playerOBB.update();
@@ -798,17 +696,17 @@ const sweeperGeometry = new THREE.BoxGeometry(0.1, 100, 0.1);
 const sweeperMaterial = new THREE.MeshBasicMaterial({ color: 0xffA500 });
 const sweeper = new THREE.Mesh(sweeperGeometry, sweeperMaterial);
 
-let sweeperActive = false; // Flag to control the sweeper's movement
-let sweeperDirection = 1; // 1 for right, -1 for left
-let sweeperSpeed = 0.1; // Speed of sweeper
-const sweeperBoundary = 40; // X-axis boundary for the sweeper
+let sweeperActive = false; 
+let sweeperDirection = 1; 
+let sweeperSpeed = 0.1; 
+const sweeperBoundary = 40; 
 
 function sweep() {
     if (!scene.children.includes(sweeper)) {
-        sweeper.position.set(-sweeperBoundary, 0, 0); // Reset the sweeper's position
-        scene.add(sweeper); // Add the sweeper to the scene
+        sweeper.position.set(-sweeperBoundary, 0, 0); 
+        scene.add(sweeper);
     }
-    sweeperActive = true; // Activate the sweeper
+    sweeperActive = true; 
 }
 
 // Laser Creation Function
@@ -817,27 +715,23 @@ function createLaser() {
     const laserMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const laser = new THREE.Mesh(laserGeometry, laserMaterial);
 
-    // Random Position and Rotation
+
     laser.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, getHeight());
     laser.rotation.z = Math.random() * Math.PI;
 
-    // Laser Properties
-    laser.dim = true; // Initial state
-    laser.material.color.set(0x440000); // Dim color
+
+    laser.dim = true; 
+    laser.material.color.set(0x440000); 
 
     let n_lasers = 2+level/5;
-    const numLights = 12/n_lasers; // Number of lights along the laser
+    const numLights = 12/n_lasers; 
     for (let i = 0; i < numLights; i++) {
 	const lightPosition = (i - numLights / 2) * (laserGeometry.parameters.width / numLights);
-	const laserLight = new THREE.PointLight(0xff0000, 5, 20); // Light color, intensity, range
-	laserLight.position.set(lightPosition, 0, 0); // Position along laser length
+	const laserLight = new THREE.PointLight(0xff0000, 5, 20); 
+	laserLight.position.set(lightPosition, 0, 0); 
 	laser.add(laserLight);
     }
 
-    // Add a light to the laser
-    // Attach light to laser mesh so it moves with it
-
-    // Add to laser arrays for management
     lasers.push(laser);
     laserGroup.add(laser);
 }
@@ -846,11 +740,11 @@ function createLaser() {
 
 function clearLasers() {
     lasers.forEach((laser) => {
-	laserGroup.remove(laser); // Remove each laser from the laser group
-	laser.geometry.dispose();  // Dispose of laser geometry
-	laser.material.dispose();  // Dispose of laser material
+	laserGroup.remove(laser);
+	laser.geometry.dispose();  
+	laser.material.dispose();  
     });
-    lasers.length = 0; // Clear the lasers array
+    lasers.length = 0; 
 }
 
 
@@ -859,7 +753,9 @@ let last_laser = clock.getElapsedTime();
 let cube = null;
 let cube_light = new THREE.PointLight(0xffffff, 6, 12);
 cube_light.castShadow = true;
-// Create New Lasers Every Few Seconds
+
+
+//interval for gameplay
 setInterval(() => {
     if(gameStarted && !gameEnded){
 	level+=1;
@@ -884,15 +780,15 @@ setInterval(() => {
 	}
     } 
 
-    //console.log(camera.position)
+
 }, 3000);
 
 const laserSize = new THREE.Vector3(100, 0.1, 0.1);
-// Update Lasers and Check for Collision
+
 function updateLasers() {
     lasers.forEach((laser, index) => {
 
-	// Update Laser AABB
+
 	const laserOBB = new OBB(laser, laserSize);
 	laserOBB.update();
 
@@ -905,7 +801,6 @@ function updateLasers() {
 		//console.log("Collision detected!");
 		takeDamage();
 
-		// Handle collision (e.g., restart game or reduce health)
 	    }
 	}
 
@@ -918,22 +813,20 @@ function createCube(){
     cube_exists = 1;
     const geometry = new THREE.BoxGeometry(1, 1, 1); 
     const cubeTexture = new THREE.TextureLoader().load('earth.gif');
-    cubeTexture.wrapS = THREE.RepeatWrapping; // Horizontal wrapping
-    cubeTexture.wrapT = THREE.RepeatWrapping; // Vertical wrapping
+    cubeTexture.wrapS = THREE.RepeatWrapping; 
+    cubeTexture.wrapT = THREE.RepeatWrapping; 
     const material = new THREE.MeshStandardMaterial({ map: cubeTexture }); 
     const cube = new THREE.Mesh(geometry, material); 
     cube.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, 0.1);
     cube.castShadow = true;
 
-    // Add scrolling effect to the texture
+
     cube.updateTexture = function () {
-        cubeTexture.offset.x += 0.01; // Adjust speed of horizontal scroll
-        //cubeTexture.offset.y += 0.005; // Adjust speed of vertical scroll
+        cubeTexture.offset.x += 0.01; 
     };
 
-    // Add wobbling effect to the cube's Y position
     cube.wobble = function (elapsedTime) {
-        cube.position.z += Math.sin(elapsedTime * 5) * 0.05; // Adjust speed and height
+        cube.position.z += Math.sin(elapsedTime * 5) * 0.05; 
     };
 
     return cube;
@@ -975,14 +868,14 @@ function pulseLight(duration, light) {
     function animatePulse() {
         const elapsedTime = performance.now() - startTime;
 
-        // Calculate intensity (0 to 1) based on elapsed time
+
         const intensity = Math.sin((elapsedTime / duration) * Math.PI);
         light.intensity = intensity;
 
         if (elapsedTime < duration) {
-            requestAnimationFrame(animatePulse); // Continue animation
+            requestAnimationFrame(animatePulse); 
         } else {
-            light.intensity = 0; // Reset intensity to 0 after pulsing
+            light.intensity = 0; 
         }
     }
 
@@ -996,9 +889,9 @@ function takeDamage(){
     if (lives.length){
 	pulseLight(500, damageLight);
 	let life = lives.pop();
-	livesGroup.remove(life); // Remove each laser from the laser group
-	life.geometry.dispose();  // Dispose of laser geometry
-	life.material.dispose();  // Dispose of laser material
+	livesGroup.remove(life); 
+	life.geometry.dispose();  
+	life.material.dispose();  
 	last_collision = clock.getElapsedTime();
 	if (!lives.length) {
 	    displayGameOverScreen();
@@ -1012,12 +905,11 @@ function displayGameOverScreen() {
     gameEnded = true;
     const loader = new FontLoader();
 
-    // Load the font
+   
     loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
-	// Clear the scene or hide current game elements
-	scene.clear(); // You might still need to manually clear objects if `.clear()` isn't sufficient.
+	scene.clear(); 
 
-	// Create a "Game Over" message 
+
 	let time = Math.floor(clock.getElapsedTime());
 	const gameOverMessage = "Game Over";
 	const survivedMessage = `You survived for ${time} seconds`;
@@ -1048,8 +940,8 @@ function displayGameOverScreen() {
 	const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 	const gameOverMesh = new THREE.Mesh(gameOverText, textMaterial);
 	const survivedMesh = new THREE.Mesh(survivedText, textMaterial);
-	// Position the text at the center of the screen
-	gameOverMesh.position.set(-7, 1, 0); // Adjust the coordinates to make sure that its in the middle
+
+	gameOverMesh.position.set(-7, 1, 0); 
 	survivedMesh.position.set(-7, -2, 0); 
 	scene.add(gameOverMesh);
 	scene.add(survivedMesh);
@@ -1061,12 +953,10 @@ function displayGameOverScreen() {
 function displayStartScreen() {
     const loader = new FontLoader();
 
-    // Load the font
-    loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
-	// Clear the scene or hide current game elements
-	// You might still need to manually clear objects if `.clear()` isn't sufficient.
 
-	// Create a "Game Over" message 
+    loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
+
+
 	let time = Math.floor(clock.getElapsedTime());
 	const gameOverMessage = "Welcome to Laser Maze";
 	const survivedMessage = `The goal is to survive, press r for keyboard and t for mouse.\nPress g to enable demo mode (100 lives).`;
@@ -1097,8 +987,7 @@ function displayStartScreen() {
 	const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 	const gameOverMesh = new THREE.Mesh(gameOverText, textMaterial);
 	const survivedMesh = new THREE.Mesh(survivedText, textMaterial);
-	// Position the text at the center of the screen
-	gameOverMesh.position.set(-95, 1, 0); // Adjust the coordinates to make sure that its in the middle
+	gameOverMesh.position.set(-95, 1, 0); 
 	survivedMesh.position.set(-95, -2, 0); 
 	scene.add(gameOverMesh);
 	scene.add(survivedMesh);
@@ -1112,7 +1001,6 @@ displayStartScreen();
 
 
 
-// Keyboard Controls for Player Movement
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false};
 document.addEventListener('keydown', (event) => keys[event.key] = true);
 document.addEventListener('keyup', (event) => keys[event.key] = false);
@@ -1120,7 +1008,7 @@ document.addEventListener('keyup', (event) => keys[event.key] = false);
 
 
 
-//createLives();
+
 console.log(lives);
 
 //playerOBB.display(scene);
@@ -1132,61 +1020,56 @@ console.log(lives);
 // directionalLight.position.set(50, 100, 50);
 // scene.add(directionalLight);
 
-
-// Create a PlaneGeometry for the floor
-const floorGeometry = new THREE.PlaneGeometry(80, 80); // 100x100 units]
+const floorGeometry = new THREE.PlaneGeometry(80, 80); 
 
 
-const floorTexture = new THREE.TextureLoader().load('graytexture.jpg'); // Load your texture
+const floorTexture = new THREE.TextureLoader().load('graytexture.jpg'); 
 
-// Configure the material with the texture
 const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
 
 
 
-// Create the floor mesh
+
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 
-// const testMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green material
+// const testMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); 
 // floor.material = testMaterial;
 
-// Rotate the floor to lie on the XZ plane
-//floor.rotation.x = -Math.PI / 2; // Rotate 90 degrees to align with XZ
+
 floor.position.z = -1.9; // Place it at y=0
 
-// Optionally, receive shadows for realism
 floor.receiveShadow = true;
 
-// Add the floor to the scene
+
 //scene.add(floor);
 
 const wallGeometry = new THREE.PlaneGeometry(200, 200);
 // Wall 1: Back wall
 const wall1 = new THREE.Mesh(wallGeometry, floorMaterial);
-wall1.position.x = -40 ; // Position at the back
-wall1.position.y = 40; // Lift to match the center of the wall
+wall1.position.x = -40 ; 
+wall1.position.y = 40; 
 wall1.rotation.x = Math.PI / 2; 
 
 
 // Wall 2: Front wall
 const wall2 = new THREE.Mesh(wallGeometry, floorMaterial);
-wall2.position.x = 40 ; // Position at the back
-wall2.position.y = -40; // Lift to match the center of the wall
+wall2.position.x = 40 ; 
+wall2.position.y = -40; 
 wall2.rotation.x = Math.PI / 2; 
 
 
 // Wall 3: Left wall
 const wall3 = new THREE.Mesh(wallGeometry, floorMaterial);
-wall3.position.x = -40; // Position to the left
-wall3.position.y = 40; // Lift to match the center of the wall
-wall3.rotation.y = Math.PI / 2; // Rotate 90 degrees to face inward
+wall3.position.x = -40; 
+wall3.position.y = 40; 
+wall3.rotation.y = Math.PI / 2; 
 
 
 // Wall 4: Right wall
 const wall4 = new THREE.Mesh(wallGeometry, floorMaterial);
-wall4.position.x = 40; // Position to the right
-wall4.position.y = 40; // Lift to match the center of the wall
-wall4.rotation.y = -Math.PI / 2; // Rotate -90 degrees to face inward
+wall4.position.x = 40;
+wall4.position.y = 40; 
+wall4.rotation.y = -Math.PI / 2; 
 
 
 wall1.receiveShadow = true;
@@ -1238,7 +1121,7 @@ function animate() {
 	if (cube_exists){
 	    cube.updateTexture();
 
-	    const elapsedTime = performance.now() / 1000; // Get time in seconds
+	    const elapsedTime = performance.now() / 1000; 
 	    cube.wobble(elapsedTime);
 
 	    if (Math.abs(cube.position.x - player.group.position.x) <= 1 && Math.abs(cube.position.y - player.group.position.y) <= 1){
@@ -1249,16 +1132,15 @@ function animate() {
 	    }
 	}
 
-        // Sweeper Movement
+
         if (sweeperActive) {
             sweeper.position.x += sweeperSpeed * sweeperDirection;
 
-            // Reverse direction if sweeper hits the boundary
             if (sweeper.position.x >= sweeperBoundary || sweeper.position.x <= -sweeperBoundary) {
-                sweeperDirection *= -1; // Reverse direction
+                sweeperDirection *= -1; 
             }
 
-            // Collision Detection with Player
+    
             if (Math.abs(sweeper.position.x - player.group.position.x) < 1 && player.group.position.z < 1 && time - last_collision > 1) {
                 takeDamage();
 		last_collision = time;
@@ -1268,7 +1150,6 @@ function animate() {
     }
 
     player.animateRun(time);
-    //updateAABBHelper();
     playerOBB.update();
     //controls.update(); 
     renderer.render(scene, camera);
