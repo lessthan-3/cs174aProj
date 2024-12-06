@@ -1,6 +1,6 @@
 ***Laser Maze***
 
-Play as Niklas "Broccoli" Ellegaard in this illuminating adventure across space and time.
+Play as secret agent sunny in this illuminating adventure across space and time.
 
 **Build**
 
