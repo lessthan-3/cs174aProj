@@ -1,6 +1,8 @@
 // Global Variables
 
 let global_crouching = false;
+let level = 0;
+let cube_exists = 0;
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -206,9 +208,6 @@ class Figure {
 	    this.legs[0].rotation.x = -angle;
 	    this.legs[1].rotation.x = angle;
 	}
-
-
-
     }
 
     // Update direction to face movement
@@ -259,14 +258,8 @@ class Figure {
 		this.group.rotation.set(Math.PI /2, Math.PI/4 ,0 );
 	    }
 	}
-
-
-
     }
 }
-
-
-
 
 class OBB {
     constructor(object, fixedSize = null) {
@@ -431,14 +424,11 @@ class OBB {
     }
 }
 
-
-
 // Initialize the player figure
 const player = new Figure({ x: 0, y: 0, z: 0 });
 let velocity = new THREE.Vector3();
 const playerSize = new THREE.Vector3(1, 1, 2);
 const playerOBB = new OBB(player.group);
-
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -453,8 +443,8 @@ function onMouseClick(event) {
     // Convert screen coordinates to normalized device coordinates (NDC)
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    console.log(mouse.x, mouse.y);
-    console.log(player.group.position.x);
+    // console.log(mouse.x, mouse.y);
+    // console.log(player.group.position.x);
     // Update the raycaster with the camera and mouse position
     raycaster.setFromCamera(mouse, camera);
 
@@ -462,7 +452,7 @@ function onMouseClick(event) {
     const intersects = raycaster.intersectObjects(scene.children, true);
 
     if (intersects.length > 0) {
-	console.log('Intersected object:', intersects[0].object);
+	// console.log('Intersected object:', intersects[0].object);
     }
 }
 
@@ -510,11 +500,7 @@ scene.add(livesGroup);
 // const geometry = new THREE.Shape;
 // const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
 
-
-function createLives(){
-
-
-
+function createLives(n){
     const x = 0, y = 0;
     const heartShape = new THREE.Shape();
 
@@ -528,7 +514,7 @@ function createLives(){
 
     const geometry = new THREE.ShapeGeometry( heartShape );
     const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-    for(let i = 0; i < 3; i++) {
+    for(let i = 0; i < n; i++) {
 	const heart = new THREE.Mesh( geometry, material );
 	heart.material.side = THREE.DoubleSide;
 
@@ -541,10 +527,10 @@ function createLives(){
 
 	lives.push(heart);
 	livesGroup.add(heart);
-
     }
 
 }
+
 // Update player AABB position in the movePlayer function
 let isJumping = false;
 const gravity = -.01;
@@ -559,7 +545,7 @@ function movePlayer() {
 	let tol = 0.2;
 	let dy = mouse.y - player.group.position.y / 20;
 	let dx = mouse.x - player.group.position.x / 20;
-	velocity.y = mouse.y - player.group.position.y/ 20 ;
+	velocity.y = mouse.y - player.group.position.y / 20 ;
 	velocity.x = mouse.x - player.group.position.x / 20 ;
 	
 	// if (dx**2 + dy**2 > tol){
@@ -596,7 +582,6 @@ function movePlayer() {
     player.group.position.add(velocity);
     player.updateDirection(velocity);
 
-
     if (isJumping) {
 	velocity.z += gravity;
 	// console.log(velocity);
@@ -628,6 +613,7 @@ window.addEventListener('resize', () => {
 
 
 let clock = new THREE.Clock();
+
 // Laser Group
 const lasers = [];
 const laserGroup = new THREE.Group();
@@ -689,12 +675,23 @@ function clearLasers() {
 
 
 let last_laser = clock.getElapsedTime();
+
+let cube = null;
+
 // Create New Lasers Every Few Seconds
 setInterval(() => {
+    level+=1;
     clearLasers();
-    for (let i = 0; i < 5; i++) {
+    let num_lasers = 2+level/5;
+
+    for (let i = 0; i < num_lasers; i++) {
 	createLaser();
 	last_laser = clock.getElapsedTime();
+    }
+
+    if (!cube_exists && level % 3 === 0){
+	cube = createCube();
+	scene.add(cube);
     }
     //console.log(camera.position)
 }, 3000);
@@ -707,8 +704,6 @@ function updateLasers() {
 	// Update Laser AABB
 	const laserOBB = new OBB(laser, laserSize);
 	laserOBB.update();
-
-
 
 	// Check Collision
 	if(laser.dim == false && clock.getElapsedTime() - last_collision > 3){
@@ -725,9 +720,64 @@ function updateLasers() {
     });
 }
 
+function createCube(){
+    cube_exists = 1;
+    const geometry = new THREE.BoxGeometry(1, 1, 1); 
+    const material = new THREE.MeshBasicMaterial({ color: 0x0000FF }); 
+    const cube = new THREE.Mesh(geometry, material); 
 
+    cube.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, 0);
+    return cube;
+}
 
+function giveReward(){
+    //const i = Math.floor(Math.random() * (3 - 1 + 1)) + 1;
+    let i = 3;
+    switch (i){
+	case 1:
+	    // add life
+	    break;
+	case 2:
+	    // make invisible
+	    break;
+	case 3:
+	    triggerJumpscare();
+    }
+}
 
+// Create a Jumpscare Object (e.g., a scary face)
+const geometry = new THREE.PlaneGeometry(2, 2);
+const texture = new THREE.TextureLoader().load('niklas.png');
+const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+const jumpscareObject = new THREE.Mesh(geometry, material);
+
+// Initially Hide the Jumpscare Object
+jumpscareObject.visible = false;
+scene.add(jumpscareObject);
+
+function triggerJumpscare() {
+    jumpscareObject.visible = true; // Make the scary object visible
+
+    // Animate the object (e.g., scale up rapidly)
+    let scale = 0.1;
+    const jumpscareAnimation = setInterval(() => {
+	scale += 2;
+	jumpscareObject.scale.set(scale, scale, scale);
+
+	if (scale >= 15) {
+	    clearInterval(jumpscareAnimation);
+	}
+    }, 50);
+
+    // Play a loud sound
+    const audio = new Audio('niklas.wav');
+    //audio.play();
+
+    // Clear picture after 1 second
+    setTimeout(() => {
+	jumpscareObject.visible = false;
+    }, 2000);
+}
 
 function takeDamage(){
     if(lives.length){
@@ -741,6 +791,7 @@ function takeDamage(){
 	}
     }
 }
+
 
 
 function displayGameOverScreen() {
@@ -795,11 +846,8 @@ const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: f
 document.addEventListener('keydown', (event) => keys[event.key] = true);
 document.addEventListener('keyup', (event) => keys[event.key] = false);
 
-
-
-
-createLives();
-console.log(lives);
+createLives(3);
+// console.log(lives);
 
 playerOBB.display(scene);
 
@@ -811,12 +859,22 @@ function animate() {
     playerOBB.update();
     movePlayer();
     updateLasers();
-    if((time - last_laser) > 1){
+
+    if ((time - last_laser) > 1){
 	lasers.forEach((laser, index) => {
 	    laser.dim = false;
 	    laser.material.color.set(0xff0000);
 	});
     }
+
+    if (cube_exists) {
+	if (Math.abs(cube.position.x - player.group.position.x) <= 1 && Math.abs(cube.position.y - player.group.position.y) <= 1){
+	    scene.remove(cube);
+	    cube_exists = 0;
+	    giveReward();
+	}
+    }
+
     player.animateRun(time);
     //updateAABBHelper();
     playerOBB.update();
