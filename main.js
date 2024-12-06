@@ -3,6 +3,9 @@
 let global_crouching = false;
 let level = 0;
 let cube_exists = 0;
+let gameStarted = false;
+let gameEnded = false;
+let mouseMode = false;
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -31,69 +34,22 @@ document.body.appendChild(renderer.domElement);
 //test comment
 
 // Camera Position
-camera.position.set(0, -17, 0 );
-camera.lookAt(0,0,0);
+camera.position.set(-90, 10, 10 );
 
 
 
-function rotateCameraAroundZ(sceneCenter = new THREE.Vector3(0, 0, 0), angle = Math.PI / 2) {
-    // Translate the camera to origin relative to the scene center
-    const offset = new THREE.Vector3().subVectors(camera.position, sceneCenter);
 
-    // Apply the rotation around the Z-axis
-    const cosAngle = Math.cos(angle);
-    const sinAngle = Math.sin(angle);
-    const rotatedX = cosAngle * offset.x - sinAngle * offset.y;
-    const rotatedY = sinAngle * offset.x + cosAngle * offset.y;
 
-    // Update the camera's position
-    camera.position.set(rotatedX + sceneCenter.x, rotatedY + sceneCenter.y, offset.z + sceneCenter.z);
 
-    // Make the camera look at the scene center
-    camera.lookAt(sceneCenter);
-}
 
 // Orbit Controls (for testing)
 const controls = new OrbitControls(camera, renderer.domElement);
 
 
 
-const lightAmbient = new THREE.AmbientLight(0x808080, 0.2)
-scene.add(lightAmbient)
 
 
-const directionalLight = new THREE.DirectionalLight(0x808080, .3); // Red light with intensity 1
-directionalLight.position.copy(camera.position); // Match the camera's position
 
-// // Set the direction of the light to point where the camera is looking
-// const lightTarget = new THREE.Object3D();
-// lightTarget.position.set(0, 0, 0); // Light looks at the origin
-// scene.add(lightTarget);
-
-// directionalLight.target = lightTarget;
-// scene.add(directionalLight);
-
-// const directionalLight1 = new THREE.DirectionalLight(0x808080, .3); // Red light with intensity 1
-// directionalLight1.position.copy(camera.position); // Match the camera's position
-
-// // Set the direction of the light to point where the camera is looking
-// const lightTarget1 = new THREE.Object3D();
-// lightTarget1.position.set(40, 0, 0); // Light looks at the origin
-// scene.add(lightTarget1);
-
-// directionalLight1.target = lightTarget1;
-// scene.add(directionalLight1);
-
-// const directionalLight2 = new THREE.DirectionalLight(0x808080, .3); // Red light with intensity 1
-// directionalLight2.position.copy(camera.position); // Match the camera's position
-
-// // Set the direction of the light to point where the camera is looking
-// const lightTarget2 = new THREE.Object3D();
-// lightTarget2.position.set(-40, 0, 0); // Light looks at the origin
-// scene.add(lightTarget2);
-
-// directionalLight2.target = lightTarget2;
-// scene.add(directionalLight2);
 
 const degreesToRadians = (degrees) => {
     return degrees * (Math.PI / 180)
@@ -548,6 +504,7 @@ window.addEventListener('click', onMouseClick, false);
 let mouseLock = false;
 
 function onMouseClick(event) {
+	console.log(camera.position);
     mouseLock = true;
     // Convert screen coordinates to normalized device coordinates (NDC)
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -606,7 +563,11 @@ window.addEventListener('keyup', (event) => {
     if (event.key === 's' || event.key === 'S') keys.S = false;
     if (event.key === 'a' || event.key === 'A') keys.A = false;
     if (event.key === 'd' || event.key === 'D') keys.D = false;
-	if (event.key === 'r' || event.key === 'R') rotateCameraAroundZ();
+	if (event.key === 'r' || event.key === 'R') startGame();
+	if (event.key === 't' || event.key === 'T') {
+		mouseMode = true;
+		startGame();
+	}
     if (event.code === 'Space') keys.Space = false;
     if (event.code === 'Shift') keys.Shift = false;
 });
@@ -685,17 +646,22 @@ function addLife(){
 	livesGroup.add(heart);
 
 }
+
+
 // Update player AABB position in the movePlayer function
 let isJumping = false;
 const gravity = -.01;
 
 function movePlayer() {
-    if (keys.W) velocity.y = 0.1;
-    if (keys.S) velocity.y = -0.1;
-    if (keys.A) velocity.x = -0.1;
-    if (keys.D) velocity.x = 0.1;
+	if(!mouseMode){
+		if (keys.W) velocity.y = 0.1;
+		if (keys.S) velocity.y = -0.1;
+		if (keys.A) velocity.x = -0.1;
+		if (keys.D) velocity.x = 0.1;
+	}
+    
 
-    if (mouseLock) {
+    if (mouseMode) {
 	let tol = 0.2;
 	//let dy = clicky - player.group.position.y;
 	//let dx = clickx - player.group.position.x;
@@ -720,7 +686,7 @@ function movePlayer() {
 	if(player.group.position.x < -39 && velocity.x < 0){
 		velocity.x = 0
 	}
-	if(player.group.position.y < -39 && velocity.y > 0){
+	if(player.group.position.y < -33 && velocity.y < 0){
 		velocity.y = 0
 	}
 
@@ -818,7 +784,7 @@ function createLaser() {
     laser.dim = true; // Initial state
     laser.material.color.set(0x440000); // Dim color
 
-    const numLights = 5; // Number of lights along the laser
+    const numLights = 1; // Number of lights along the laser
     for (let i = 0; i < numLights; i++) {
 	const lightPosition = (i - numLights / 2) * (laserGeometry.parameters.width / numLights);
 	const laserLight = new THREE.PointLight(0xff0000, 0.5, 5); // Light color, intensity, range
@@ -851,18 +817,21 @@ let last_laser = clock.getElapsedTime();
 let cube = null;
 // Create New Lasers Every Few Seconds
 setInterval(() => {
-	level+=1;
-    clearLasers();
-    let num_lasers = 2+level/5;
-    for (let i = 0; i < num_lasers; i++) {
-	createLaser();
-	last_laser = clock.getElapsedTime();
-    }
+	if(gameStarted && !gameEnded){
+		level+=1;
+		clearLasers();
+		let num_lasers = 2+level/5;
+		for (let i = 0; i < num_lasers; i++) {
+		createLaser();
+		last_laser = clock.getElapsedTime();
+		}
 
-	if (!cube_exists && level % 3 === 0){
-		cube = createCube();
-		scene.add(cube);
-	}
+		if (!cube_exists && level % 3 === 0){
+			cube = createCube();
+			scene.add(cube);
+		}
+	} 
+	
     //console.log(camera.position)
 }, 3000);
 
@@ -936,6 +905,8 @@ function takeDamage(){
 
 
 function displayGameOverScreen() {
+
+	gameEnded = true;
     const loader = new FontLoader();
 
     // Load the font
@@ -979,8 +950,64 @@ function displayGameOverScreen() {
 	survivedMesh.position.set(-7, -2, 0); 
 	scene.add(gameOverMesh);
 	scene.add(survivedMesh);
+	camera.position.set(-2.5, 1, 15)
+	camera.lookAt(-2.5, 1, 0);
     });
 }
+
+function displayStartScreen() {
+    const loader = new FontLoader();
+
+    // Load the font
+    loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
+	// Clear the scene or hide current game elements
+    // You might still need to manually clear objects if `.clear()` isn't sufficient.
+
+	// Create a "Game Over" message 
+	let time = Math.floor(clock.getElapsedTime());
+	const gameOverMessage = "Welcome to Laser Maze";
+	const survivedMessage = `The goal is to survive, press r for keyboard and t for mouse`;
+	const gameOverText = new TextGeometry(gameOverMessage, {
+	    font: font, 
+	    size: 2,  
+	    height: 0.1, 
+	    curveSegments: 12, 
+	    bevelEnabled: true,
+	    bevelThickness: 0.02,
+	    bevelSize: 0.02,
+	    bevelOffset: 0,
+	    bevelSegments: 3
+	});
+
+	const survivedText = new TextGeometry(survivedMessage, {
+	    font: font,
+	    size: 0.8,
+	    height: 0.1,
+	    curveSegments: 12,
+	    bevelEnabled: true,
+	    bevelThickness: 0.02,
+	    bevelSize: 0.02,
+	    bevelOffset: 0,
+	    bevelSegments: 3,
+	});
+
+	const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+	const gameOverMesh = new THREE.Mesh(gameOverText, textMaterial);
+	const survivedMesh = new THREE.Mesh(survivedText, textMaterial);
+	// Position the text at the center of the screen
+	gameOverMesh.position.set(-95, 1, 0); // Adjust the coordinates to make sure that its in the middle
+	survivedMesh.position.set(-95, -2, 0); 
+	scene.add(gameOverMesh);
+	scene.add(survivedMesh);
+	camera.position.set(-80, 1, 15)
+	camera.lookAt(-80, 1, 0);
+    });
+}
+
+displayStartScreen();
+
+
+
 
 // Keyboard Controls for Player Movement
 const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, Space: false};
@@ -990,7 +1017,7 @@ document.addEventListener('keyup', (event) => keys[event.key] = false);
 
 
 
-createLives();
+//createLives();
 console.log(lives);
 
 //playerOBB.display(scene);
@@ -1028,7 +1055,7 @@ floor.position.z = -2; // Place it at y=0
 floor.receiveShadow = true;
 
 // Add the floor to the scene
-scene.add(floor);
+//scene.add(floor);
 
 const wallGeometry = new THREE.PlaneGeometry(200, 200);
 // Wall 1: Back wall
@@ -1036,28 +1063,28 @@ const wall1 = new THREE.Mesh(wallGeometry, floorMaterial);
 wall1.position.x = -40 ; // Position at the back
 wall1.position.y = 40; // Lift to match the center of the wall
 wall1.rotation.x = Math.PI / 2; 
-scene.add(wall1);
+
 
 // Wall 2: Front wall
 const wall2 = new THREE.Mesh(wallGeometry, floorMaterial);
 wall2.position.x = 40 ; // Position at the back
 wall2.position.y = -40; // Lift to match the center of the wall
 wall2.rotation.x = Math.PI / 2; 
-scene.add(wall2);
+
 
 // Wall 3: Left wall
 const wall3 = new THREE.Mesh(wallGeometry, floorMaterial);
 wall3.position.x = -40; // Position to the left
 wall3.position.y = 40; // Lift to match the center of the wall
 wall3.rotation.y = Math.PI / 2; // Rotate 90 degrees to face inward
-scene.add(wall3);
+
 
 // Wall 4: Right wall
 const wall4 = new THREE.Mesh(wallGeometry, floorMaterial);
 wall4.position.x = 40; // Position to the right
 wall4.position.y = 40; // Lift to match the center of the wall
 wall4.rotation.y = -Math.PI / 2; // Rotate -90 degrees to face inward
-scene.add(wall4);
+
 
 wall1.receiveShadow = true;
 wall2.receiveShadow = true;
@@ -1065,16 +1092,41 @@ wall3.receiveShadow = true;
 wall4.receiveShadow = true;
 
 
+
+function startGame(){
+	if(!gameStarted){
+		scene.add(wall1);
+		scene.add(wall2);
+		scene.add(wall3);
+		scene.add(wall4);
+		scene.add(floor);
+		createLives();
+		const lightAmbient = new THREE.AmbientLight(0x808080, 0.2)
+		scene.add(lightAmbient)
+		gameStarted = true;
+		camera.position.set(0, -17, 6 );
+		camera.lookAt(0,0,0);
+	}
+	
+}
+
+
 // Animation Loop
 function animate() {
-
-
-
-	camera.position.set(player.group.position.x, player.group.position.y - 7, player.group.position.z + 4);
-	camera.lookAt(player.group.position); 
-
-    requestAnimationFrame(animate);
+	requestAnimationFrame(animate);
     let time = clock.getElapsedTime();
+
+	if(gameStarted && !gameEnded){
+
+		if(!mouseMode){
+			camera.position.set(player.group.position.x, player.group.position.y - 7, player.group.position.z + 4);
+			camera.lookAt(player.group.position); 
+		}
+		
+	
+	
+
+    
     playerOBB.update();
     movePlayer();
     updateLasers();
@@ -1092,7 +1144,7 @@ function animate() {
 		}
 		}
 
-
+	}
 
     player.animateRun(time);
     //updateAABBHelper();
