@@ -1036,7 +1036,7 @@ const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 // floor.material = testMaterial;
 
 
-floor.position.z = -1.9; // Place it at y=0
+floor.position.z = -1.9; 
 
 floor.receiveShadow = true;
 
